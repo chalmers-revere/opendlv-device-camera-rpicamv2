@@ -45,8 +45,8 @@ int32_t main(int32_t argc, char **argv) {
     }
 
 
-    uint32_t const WIDTH = 848;
-    uint32_t const HEIGHT = 480;
+    uint32_t const WIDTH = 1280;
+    uint32_t const HEIGHT = 960;
     uint32_t const BPP = 24;
 
     std::string const NAME{(commandlineArguments["name"].size() != 0) ? commandlineArguments["name"] : "/cam0"};
