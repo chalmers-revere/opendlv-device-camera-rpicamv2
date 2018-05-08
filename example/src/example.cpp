@@ -60,17 +60,17 @@ int32_t main(int32_t argc, char **argv) {
       image->imageDataOrigin = image->imageData;
       sharedMemory->unlock();
 
-      uint32_t i = 0;
       while (od4.isRunning()) {
         sharedMemory->wait();
 	  
-        sharedMemory->lock();
+	if (VERBOSE) {
+          IplImage *scaledImage;
+          sharedMemory->lock();
+          cv::resize(image, scaledImage, cv::Size(128, 96), 0, 0, CV_INTER_NEAREST);
+          sharedMemory->unlock();
 
-        std::string const FILENAME = std::to_string(i) + ".jpg";
-        cvSaveImage(FILENAME.c_str(), image);
-        i++;
 
-        sharedMemory->unlock();
+	}
       }
 
       cvReleaseImageHeader(&image);
