@@ -14,18 +14,10 @@
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
 # Part to build example.
-FROM alpine:3.7 as builder
-MAINTAINER Christian Berger "christian.berger@gu.se"
-RUN echo http://dl-4.alpinelinux.org/alpine/edge/main > /etc/apk/repositories && \
-    echo http://dl-4.alpinelinux.org/alpine/edge/community >> /etc/apk/repositories && \
-    echo http://dl-4.alpinelinux.org/alpine/edge/testing >> /etc/apk/repositories && \
-    apk update && \
-    apk --no-cache add \
-        cmake \
-        g++ \
-        opencv \
-        opencv-dev \
-        make
+FROM debian:stretch-slim as builder
+RUN apt-get -y update && apt-get -y upgrade 
+RUN apt-get -y install cmake g++ libopencv-dev libopencv-core-dev libopencv-highgui-dev make
+
 ADD . /opt/sources
 WORKDIR /opt/sources
 RUN mkdir build && \
@@ -34,16 +26,9 @@ RUN mkdir build && \
     VERBOSE=1 make && make install
 
 # Part to deploy example.
-FROM alpine:3.7
-MAINTAINER Christian Berger "christian.berger@gu.se"
-
-RUN echo http://dl-4.alpinelinux.org/alpine/edge/main > /etc/apk/repositories && \
-    echo http://dl-4.alpinelinux.org/alpine/edge/community >> /etc/apk/repositories && \
-    echo http://dl-4.alpinelinux.org/alpine/edge/testing >> /etc/apk/repositories && \
-    apk update && \
-    apk --no-cache add \
-        opencv-libs \
-        libcanberra-gtk3
+FROM debian:stretch-slim
+RUN apt-get -y update && apt-get -y upgrade 
+RUN apt-get -y install libopencv-core2.4v5 libopencv-highgui2.4-deb0 
 
 WORKDIR /usr/bin
 COPY --from=builder /tmp/bin/example .

@@ -62,8 +62,7 @@ int32_t main(int32_t argc, char **argv) {
 
       uint32_t i = 0;
       while (od4.isRunning()) {
-        // Some bug makes us freeze, and the producer freezes as well..
-        // sharedMemory->wait();
+        sharedMemory->wait();
 	  
         sharedMemory->lock();
 
@@ -72,7 +71,6 @@ int32_t main(int32_t argc, char **argv) {
         i++;
 
         sharedMemory->unlock();
-        std::this_thread::sleep_for(std::chrono::seconds(1));
       }
 
       cvReleaseImageHeader(&image);

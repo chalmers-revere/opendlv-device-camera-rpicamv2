@@ -37,11 +37,10 @@ int32_t main(int32_t argc, char **argv) {
     std::string const NAME{(commandlineArguments["name"].size() != 0) ? commandlineArguments["name"] : "/cam0"};
         
     raspicam::RaspiCam camera;
-    camera.setFormat(raspicam::RASPICAM_FORMAT_BGR);
 
     if (!camera.open()) {
       std::cerr << "Could not open camera." << std::endl;
-      return retCode =1;
+      return retCode = 1;
     }
 
     std::this_thread::sleep_for(std::chrono::seconds(2));
