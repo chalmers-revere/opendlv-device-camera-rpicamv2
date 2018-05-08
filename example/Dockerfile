@@ -14,7 +14,7 @@
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
 # Part to build example.
-FROM debian:stretch-slim as builder
+FROM debian:buster-slim as builder
 RUN apt-get -y update && apt-get -y upgrade 
 RUN apt-get -y install cmake g++ libopencv-dev libopencv-core-dev libopencv-highgui-dev make
 
@@ -26,9 +26,9 @@ RUN mkdir build && \
     make && make install
 
 # Part to deploy example.
-FROM debian:stretch-slim
+FROM debian:buster-slim
 RUN apt-get -y update && apt-get -y upgrade 
-RUN apt-get -y install libopencv-core2.4v5 libopencv-highgui2.4-deb0 
+RUN apt-get -y install libopencv-core3.2 libopencv-highgui3.2 libopencv-imgproc3.2
 
 WORKDIR /usr/bin
 COPY --from=builder /tmp/bin/example .

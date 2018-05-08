@@ -72,7 +72,6 @@ int32_t main(int32_t argc, char **argv) {
           sharedMemory->unlock();
 
           //cvSaveImage(const char* filename, const CvArr* image
-
 	      }
       }
 
