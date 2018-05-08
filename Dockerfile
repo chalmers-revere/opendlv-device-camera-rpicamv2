@@ -13,7 +13,7 @@
 # You should have received a copy of the GNU General Public License
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
-FROM debian:stretch-slim as builder
+FROM debian:buster-slim as builder
 
 RUN apt-get -y update && apt-get -y upgrade 
 RUN apt-get -y install cmake g++ git make
@@ -35,7 +35,7 @@ RUN mkdir build && \
     make && make install
 
 
-FROM debian:stretch-slim
+FROM debian:buster-slim
 
 WORKDIR /usr/bin
 COPY --from=builder /tmp/build-dest/ /usr/

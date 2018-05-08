@@ -33,16 +33,17 @@ int32_t main(int32_t argc, char **argv) {
   auto commandlineArguments = cluon::getCommandlineArguments(argc, argv);
   if ((0 == commandlineArguments.count("name")) || (0 == commandlineArguments.count("cid"))) {
     std::cerr << argv[0] << " accesses video data using shared memory provided using the command line parameter --name=." << std::endl;
-    std::cerr << "Usage:   " << argv[0] << " --cid=<OpenDaVINCI session> --name=<name for the associated shared memory> [--verbose]" << std::endl;
+    std::cerr << "Usage:   " << argv[0] << " --cid=<OpenDaVINCI session> --name=<name for the associated shared memory> [--id=<sender stamp>] [--verbose]" << std::endl;
     std::cerr << "         --name:    name of the shared memory to use" << std::endl;
     std::cerr << "         --verbose: when set, a thumbnail of the image contained in the shared memory is sent" << std::endl;
     std::cerr << "Example: " << argv[0] << " --cid=111 --name=cam0" << std::endl;
     retCode = 1;
   } else {
     bool const VERBOSE{commandlineArguments.count("verbose") != 0};
-    uint32_t const WIDTH = 1280;
-    uint32_t const HEIGHT = 960;
-    uint32_t const BPP = 24;
+    uint32_t const WIDTH{1280};
+    uint32_t const HEIGHT{960};
+    uint32_t const BPP{24};
+    uint32_t const ID{(commandlineArguments["id"].size() != 0) ? static_cast<uint32_t>(std::stoi(commandlineArguments["id"])) : 0};
 
     std::string const NAME{(commandlineArguments["name"].size() != 0) ? commandlineArguments["name"] : "/cam0"};
     cluon::OD4Session od4{static_cast<uint16_t>(std::stoi(commandlineArguments["cid"]))};
@@ -65,13 +66,23 @@ int32_t main(int32_t argc, char **argv) {
         sharedMemory->wait();
 	  
 	      if (VERBOSE) {
-          cv::Mat sourceImage(image, true);
+          cv::Mat sourceImage = cv::cvarrToMat(image, true);
           cv::Mat scaledImage;
           sharedMemory->lock();
           cv::resize(sourceImage, scaledImage, cv::Size(128, 96), 0, 0, cv::INTER_NEAREST);
           sharedMemory->unlock();
 
-          //cvSaveImage(const char* filename, const CvArr* image
+          std::vector<unsigned char> buffer;
+          cv::imencode("jpeg", scaledImage, buffer);
+          std::string data(buffer.begin(), buffer.end());
+
+          opendlv::proxy::ImageReading imageReading;
+          imageReading.format("jpeg");
+          imageReading.width(128);
+          imageReading.height(96);
+          imageReading.data(data);
+
+          od4.send(imageReading, cluon::time::now(), ID);
 	      }
       }
 

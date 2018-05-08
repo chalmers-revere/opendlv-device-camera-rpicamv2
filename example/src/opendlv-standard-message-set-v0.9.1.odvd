@@ -140,11 +140,10 @@ message opendlv.proxy.GeodeticWgs84Reading [id = 19] {
 }
 
 message opendlv.proxy.ImageReading [id = 1055] {
-    string name [id = 1];
+    string format [id = 1];
     uint32 width [id = 2];
     uint32 height [id = 3];
-    uint32 bytesPerPixel [id = 4];
-    string data [id = 5];
+    string data [id = 4];
 }
 
 message opendlv.proxy.ImageReadingShared [id = 14] {
