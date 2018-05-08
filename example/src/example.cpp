@@ -70,10 +70,8 @@ int32_t main(int32_t argc, char **argv) {
       }
       uint32_t i = 0;
       while (od4.isRunning()) {
-        // Some bug makes us freeze, and the producer freezes as well..
         sharedMemory->wait();
-	      
-        // std::this_thread::sleep_for(std::chrono::milliseconds(10));
+	  
         sharedMemory->lock();
         if (VERBOSE == 1) {
           cv::Mat mat = cv::cvarrToMat(image);
