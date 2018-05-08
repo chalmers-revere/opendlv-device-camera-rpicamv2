@@ -35,10 +35,11 @@ int32_t main(int32_t argc, char **argv) {
     std::cerr << argv[0] << " accesses video data using shared memory provided using the command line parameter --name=." << std::endl;
     std::cerr << "Usage:   " << argv[0] << " --cid=<OpenDaVINCI session> --name=<name for the associated shared memory> [--verbose]" << std::endl;
     std::cerr << "         --name:    name of the shared memory to use" << std::endl;
-    std::cerr << "         --verbose: when set, the image contained in the shared memory is displayed" << std::endl;
+    std::cerr << "         --verbose: when set, a thumbnail of the image contained in the shared memory is sent" << std::endl;
     std::cerr << "Example: " << argv[0] << " --cid=111 --name=cam0" << std::endl;
     retCode = 1;
   } else {
+    bool const VERBOSE{commandlineArguments.count("verbose") != 0};
     uint32_t const WIDTH = 1280;
     uint32_t const HEIGHT = 960;
     uint32_t const BPP = 24;
@@ -63,14 +64,16 @@ int32_t main(int32_t argc, char **argv) {
       while (od4.isRunning()) {
         sharedMemory->wait();
 	  
-	if (VERBOSE) {
-          IplImage *scaledImage;
+	      if (VERBOSE) {
+          cv::Mat sourceImage(image, true);
+          cv::Mat scaledImage;
           sharedMemory->lock();
-          cv::resize(image, scaledImage, cv::Size(128, 96), 0, 0, CV_INTER_NEAREST);
+          cv::resize(sourceImage, scaledImage, cv::Size(128, 96), 0, 0, cv::INTER_NEAREST);
           sharedMemory->unlock();
 
+          //cvSaveImage(const char* filename, const CvArr* image
 
-	}
+	      }
       }
 
       cvReleaseImageHeader(&image);

@@ -23,7 +23,7 @@ WORKDIR /opt/sources
 RUN mkdir build && \
     cd build && \
     cmake -D CMAKE_BUILD_TYPE=Release -D CMAKE_INSTALL_PREFIX=/tmp .. && \
-    VERBOSE=1 make && make install
+    make && make install
 
 # Part to deploy example.
 FROM debian:stretch-slim
