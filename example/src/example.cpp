@@ -31,7 +31,7 @@
 int32_t main(int32_t argc, char **argv) {
   int32_t retCode{0};
   auto commandlineArguments = cluon::getCommandlineArguments(argc, argv);
-  if ((0 == commandlineArguments.count("name")) || (0 == commandlineArguments.count("cid"))) {
+  if ((0 == commandlineArguments.count("name")) || (0 == commandlineArguments.count("cid") || (0 == commandlineArguments.count("verbose")))) {
     std::cerr << argv[0] << " accesses video data using shared memory provided using the command line parameter --name=." << std::endl;
     std::cerr << "Usage:   " << argv[0] << " --cid=<OpenDaVINCI session> --name=<name for the associated shared memory> [--verbose]" << std::endl;
     std::cerr << "         --name:    name of the shared memory to use" << std::endl;
@@ -39,6 +39,12 @@ int32_t main(int32_t argc, char **argv) {
     std::cerr << "Example: " << argv[0] << " --cid=111 --name=cam0" << std::endl;
     retCode = 1;
   } else {
+    int32_t VERBOSE{commandlineArguments.count("verbose") != 0};
+    if (VERBOSE) {
+      VERBOSE = std::stoi(commandlineArguments["verbose"]);
+    }
+
+
     uint32_t const WIDTH = 1280;
     uint32_t const HEIGHT = 960;
     uint32_t const BPP = 24;
@@ -59,16 +65,26 @@ int32_t main(int32_t argc, char **argv) {
       image->imageData = sharedMemory->data();
       image->imageDataOrigin = image->imageData;
       sharedMemory->unlock();
-
+      if (VERBOSE == 2) {
+        cv::namedWindow( "Display window", cv::WINDOW_AUTOSIZE);
+      }
       uint32_t i = 0;
       while (od4.isRunning()) {
         sharedMemory->wait();
 	  
         sharedMemory->lock();
-
-        std::string const FILENAME = std::to_string(i) + ".jpg";
-        cvSaveImage(FILENAME.c_str(), image);
-        i++;
+        if (VERBOSE == 1) {
+          cv::Mat mat = cv::cvarrToMat(image);
+          std::string const FILENAME = std::to_string(i) + ".jpg";
+          cv::imwrite(FILENAME, mat);
+          std::this_thread::sleep_for(std::chrono::seconds(1));
+          i++;
+          
+        } else if (VERBOSE == 2) {
+          cv::Mat mat = cv::cvarrToMat(image);
+          cv::imshow("Dispay window", mat);
+          cv::waitKey(1);
+        }
 
         sharedMemory->unlock();
       }
