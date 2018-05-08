@@ -31,7 +31,7 @@
 int32_t main(int32_t argc, char **argv) {
   int32_t retCode{0};
   auto commandlineArguments = cluon::getCommandlineArguments(argc, argv);
-  if ((0 == commandlineArguments.count("name")) || (0 == commandlineArguments.count("cid"))) {
+  if ((0 == commandlineArguments.count("name")) || (0 == commandlineArguments.count("cid") || (0 == commandlineArguments.count("verbose")))) {
     std::cerr << argv[0] << " accesses video data using shared memory provided using the command line parameter --name=." << std::endl;
     std::cerr << "Usage:   " << argv[0] << " --cid=<OpenDaVINCI session> --name=<name for the associated shared memory> [--verbose]" << std::endl;
     std::cerr << "         --name:    name of the shared memory to use" << std::endl;
@@ -39,8 +39,14 @@ int32_t main(int32_t argc, char **argv) {
     std::cerr << "Example: " << argv[0] << " --cid=111 --name=cam0" << std::endl;
     retCode = 1;
   } else {
-    uint32_t const WIDTH = 1280;
-    uint32_t const HEIGHT = 960;
+    int32_t VERBOSE{commandlineArguments.count("verbose") != 0};
+    if (VERBOSE) {
+      VERBOSE = std::stoi(commandlineArguments["verbose"]);
+    }
+
+
+    uint32_t const WIDTH = 848;
+    uint32_t const HEIGHT = 480;
     uint32_t const BPP = 24;
 
     std::string const NAME{(commandlineArguments["name"].size() != 0) ? commandlineArguments["name"] : "/cam0"};
@@ -59,20 +65,32 @@ int32_t main(int32_t argc, char **argv) {
       image->imageData = sharedMemory->data();
       image->imageDataOrigin = image->imageData;
       sharedMemory->unlock();
-
+      if (VERBOSE == 2) {
+        cv::namedWindow( "Display window", cv::WINDOW_AUTOSIZE);
+      }
       uint32_t i = 0;
       while (od4.isRunning()) {
         // Some bug makes us freeze, and the producer freezes as well..
-        // sharedMemory->wait();
-	  
+        sharedMemory->wait();
+	      
+        // std::this_thread::sleep_for(std::chrono::milliseconds(10));
         sharedMemory->lock();
-
-        std::string const FILENAME = std::to_string(i) + ".jpg";
-        cvSaveImage(FILENAME.c_str(), image);
-        i++;
+        if (VERBOSE == 1) {
+          cv::Mat mat = cv::cvarrToMat(image);
+          cv::cvtColor(mat, mat, CV_RGB2BGR);
+          std::string const FILENAME = std::to_string(i) + ".jpg";
+          cv::imwrite(FILENAME, mat);
+          std::this_thread::sleep_for(std::chrono::seconds(1));
+          i++;
+          
+        } else if (VERBOSE == 2) {
+          cv::Mat mat = cv::cvarrToMat(image);
+          cv::cvtColor(mat, mat, CV_RGB2BGR);
+          cv::imshow("Dispay window", mat);
+          cv::waitKey(1);
+        }
 
         sharedMemory->unlock();
-        std::this_thread::sleep_for(std::chrono::seconds(1));
       }
 
       cvReleaseImageHeader(&image);
