@@ -75,7 +75,6 @@ int32_t main(int32_t argc, char **argv) {
         sharedMemory->lock();
         if (VERBOSE == 1) {
           cv::Mat mat = cv::cvarrToMat(image);
-          cv::cvtColor(mat, mat, CV_RGB2BGR);
           std::string const FILENAME = std::to_string(i) + ".jpg";
           cv::imwrite(FILENAME, mat);
           std::this_thread::sleep_for(std::chrono::seconds(1));
@@ -83,7 +82,6 @@ int32_t main(int32_t argc, char **argv) {
           
         } else if (VERBOSE == 2) {
           cv::Mat mat = cv::cvarrToMat(image);
-          cv::cvtColor(mat, mat, CV_RGB2BGR);
           cv::imshow("Dispay window", mat);
           cv::waitKey(1);
         }
