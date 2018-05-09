@@ -70,15 +70,21 @@ int32_t main(int32_t argc, char **argv) {
       while (od4.isRunning()) {
         sharedMemory->wait();
 
-        sharedMemory->lock();
-        cv::Mat sourceImage = cv::cvarrToMat(image, true);
-        sharedMemory->unlock();
-        
-	// Start working with the image
+        // Make a scaled copy of the original image.
+        int32_t const width = 256;
+        int32_t const height = 196;
         cv::Mat scaledImage;
-        cv::resize(sourceImage, scaledImage, cv::Size(128, 96), 0, 0, cv::INTER_NEAREST);
+        {
+          sharedMemory->lock();
+          cv::Mat sourceImage = cv::cvarrToMat(image, false);
+          cv::resize(sourceImage, scaledImage, cv::Size(width, height), 0, 0, cv::INTER_NEAREST);
+          sharedMemory->unlock();
+        }
+        
+        // Start working with the image
 
-	// For example use tinyDNN.
+        // For example use tinyDNN.
+        /*
         network<sequential> net;
         net << conv(32, 32, 5, 1, 6, padding::same) << tanh()  // in:32x32x1, 5x5conv, 6fmaps
           << max_pool(32, 32, 6, 2) << tanh()                // in:32x32x6, 2x2pooling
@@ -86,19 +92,20 @@ int32_t main(int32_t argc, char **argv) {
           << max_pool(16, 16, 16, 2) << tanh()               // in:16x16x16, 2x2pooling
           << fc(8*8*16, 100) << tanh()                       // in:8x8x16, out:100
           << fc(100, 10) << softmax();                       // in:100 out:10
+        */
 
         // Make an estimation.
         float estimatedDetectionAngle = 0.0f;
         float estimatedDetectionDistance = 0.0f;
         if (VERBOSE) {
-          std::cout << "The target was found at angle " << estiamtedDetectionAngle 
+          std::cout << "The target was found at angle " << estimatedDetectionAngle 
             << " at distance " << estimatedDetectionDistance << std::endl;
         }
 
         // In the end, send a message that is received by the control logic.
         opendlv::logic::sensation::Point detection;
-        detection.azimuthAngle(estimatedAngle);
-        detection.distance(estimatedDistance);
+        detection.azimuthAngle(estimatedDetectionAngle);
+        detection.distance(estimatedDetectionDistance);
 
         od4.send(detection, cluon::time::now(), ID);
       }
