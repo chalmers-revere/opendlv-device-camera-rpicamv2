@@ -15,18 +15,23 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
 
-#include "cluon-complete.hpp"
-#include "opendlv-standard-message-set.hpp"
-
-#include <opencv2/highgui/highgui.hpp>
-#include <opencv2/imgproc/imgproc.hpp>
-
 #include <cstdint>
 #include <iostream>
 #include <memory>
 #include <sstream>
 #include <string>
 #include <thread>
+
+#include <opencv2/highgui/highgui.hpp>
+#include <opencv2/imgproc/imgproc.hpp>
+
+#include "cluon-complete.hpp"
+#include "opendlv-standard-message-set.hpp"
+
+#include "tiny_dnn/tiny_dnn.h"
+using namespace tiny_dnn;
+using namespace tiny_dnn::layers;
+using namespace tiny_dnn::activation;
 
 int32_t main(int32_t argc, char **argv) {
   int32_t retCode{0};
@@ -64,26 +69,38 @@ int32_t main(int32_t argc, char **argv) {
 
       while (od4.isRunning()) {
         sharedMemory->wait();
-	  
+
+        sharedMemory->lock();
+        cv::Mat sourceImage = cv::cvarrToMat(image, true);
+        sharedMemory->unlock();
+        
+	// Start working with the image
+        cv::Mat scaledImage;
+        cv::resize(sourceImage, scaledImage, cv::Size(128, 96), 0, 0, cv::INTER_NEAREST);
+
+	// For example use tinyDNN.
+        network<sequential> net;
+        net << conv(32, 32, 5, 1, 6, padding::same) << tanh()  // in:32x32x1, 5x5conv, 6fmaps
+          << max_pool(32, 32, 6, 2) << tanh()                // in:32x32x6, 2x2pooling
+          << conv(16, 16, 5, 6, 16, padding::same) << tanh() // in:16x16x6, 5x5conv, 16fmaps
+          << max_pool(16, 16, 16, 2) << tanh()               // in:16x16x16, 2x2pooling
+          << fc(8*8*16, 100) << tanh()                       // in:8x8x16, out:100
+          << fc(100, 10) << softmax();                       // in:100 out:10
+
+        // Make an estimation.
+        float estimatedDetectionAngle = 0.0f;
+        float estimatedDetectionDistance = 0.0f;
         if (VERBOSE) {
-          cv::Mat sourceImage = cv::cvarrToMat(image, true);
-          cv::Mat scaledImage;
-          sharedMemory->lock();
-          cv::resize(sourceImage, scaledImage, cv::Size(128, 96), 0, 0, cv::INTER_NEAREST);
-          sharedMemory->unlock();
-
-          std::vector<unsigned char> buffer;
-          cv::imencode(".jpeg", scaledImage, buffer);
-          std::string data(buffer.begin(), buffer.end());
-
-          opendlv::proxy::ImageReading imageReading;
-          imageReading.format("jpeg");
-          imageReading.width(128);
-          imageReading.height(96);
-          imageReading.data(data);
-
-          od4.send(imageReading, cluon::time::now(), ID);
+          std::cout << "The target was found at angle " << estiamtedDetectionAngle 
+            << " at distance " << estimatedDetectionDistance << std::endl;
         }
+
+        // In the end, send a message that is received by the control logic.
+        opendlv::logic::sensation::Point detection;
+        detection.azimuthAngle(estimatedAngle);
+        detection.distance(estimatedDistance);
+
+        od4.send(detection, cluon::time::now(), ID);
       }
 
       cvReleaseImageHeader(&image);
