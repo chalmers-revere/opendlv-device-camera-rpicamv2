@@ -14,9 +14,15 @@
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
 # Part to build example.
-FROM debian:buster-slim as builder
-RUN apt-get update
+FROM resin/armv7hf-debian:buster as builder
+RUN [ "cross-build-start" ]
+# Do not run apt-get upgrade/ will break cross compiling. Problems in in dependencies...
+RUN apt-get -y update && apt-get install apt-utils
 RUN apt-get -y install cmake g++ libopencv-dev libopencv-core-dev libopencv-highgui-dev make
+# RUN apt-key adv --keyserver keyserver.ubuntu.com --recv-keys 8EA63C9470BA0E595B75BBA2A92E492AC0B8C7EC && \
+#     apt-get install dirmngr software-properties-common && \
+#     add-apt-repository ppa:chrberger/libcluon && \
+#     apt-get update && apt-get install libcluon
 
 ADD . /opt/sources
 WORKDIR /opt/sources
@@ -24,13 +30,17 @@ RUN mkdir build && \
     cd build && \
     cmake -D CMAKE_BUILD_TYPE=Release -D CMAKE_INSTALL_PREFIX=/tmp .. && \
     make && make install
+RUN [ "cross-build-end" ]  
+
 
 # Part to deploy example.
-FROM debian:buster-slim
-RUN apt-get update
+FROM resin/armv7hf-debian:buster
+RUN [ "cross-build-start" ]
+RUN apt-get -y update 
 RUN apt-get -y install libopencv-calib3d3.2 libopencv-contrib3.2 libopencv-core3.2 libopencv-features2d3.2 libopencv-flann3.2 libopencv-highgui3.2 libopencv-imgcodecs3.2 libopencv-imgproc3.2 libopencv-ml3.2 libopencv-objdetect3.2 libopencv-photo3.2 libopencv-shape3.2 libopencv-stitching3.2 libopencv-superres3.2 libopencv-video3.2 libopencv-videoio3.2 libopencv-videostab3.2 libopencv-viz3.2
 
 WORKDIR /usr/bin
 COPY --from=builder /tmp/bin/example .
 ENTRYPOINT ["/usr/bin/example"]
 
+RUN [ "cross-build-end" ]  
