@@ -76,7 +76,7 @@ add_custom_command(OUTPUT ${CMAKE_BINARY_DIR}/opendlv-standard-message-set.cpp
 include_directories(SYSTEM ${CMAKE_BINARY_DIR})
 include_directories(${CMAKE_CURRENT_SOURCE_DIR}/src)
 
-include_directories(SYSTEM ${CMAKE_CURRENT_SOURCE_DIR}/thirdparty/tiny-dnn-v1.0.0a3)
+include_directories(SYSTEM ${CMAKE_CURRENT_SOURCE_DIR}/thirdparty/tiny-dnn-1.0.0a3)
 
 set(LIBRARIES Threads::Threads)
 

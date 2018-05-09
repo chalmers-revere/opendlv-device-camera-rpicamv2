@@ -15,7 +15,7 @@
 
 # Part to build example.
 FROM debian:buster-slim as builder
-RUN apt-get -y update && apt-get -y upgrade 
+RUN apt-get update
 RUN apt-get -y install cmake g++ libopencv-dev libopencv-core-dev libopencv-highgui-dev make
 
 ADD . /opt/sources
@@ -27,11 +27,10 @@ RUN mkdir build && \
 
 # Part to deploy example.
 FROM debian:buster-slim
-RUN apt-get -y update && apt-get -y upgrade 
-RUN apt-get -y install libopencv-dev
+RUN apt-get update
+RUN apt-get -y install libopencv-calib3d3.2 libopencv-contrib3.2 libopencv-core3.2 libopencv-features2d3.2 libopencv-flann3.2 libopencv-highgui3.2 libopencv-imgcodecs3.2 libopencv-imgproc3.2 libopencv-ml3.2 libopencv-objdetect3.2 libopencv-photo3.2 libopencv-shape3.2 libopencv-stitching3.2 libopencv-superres3.2 libopencv-video3.2 libopencv-videoio3.2 libopencv-videostab3.2 libopencv-viz3.2
 
 WORKDIR /usr/bin
 COPY --from=builder /tmp/bin/example .
-ENV NO_AT_BRIDGE=1
 ENTRYPOINT ["/usr/bin/example"]
 
