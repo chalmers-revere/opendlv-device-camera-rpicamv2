@@ -4,7 +4,7 @@ services:
     device-camera-rpicamv2:
         image: chalmersrevere/opendlv-device-camera-rpicamv2-armhf:v0.0.1
         network_mode: "host"
-        devices:
+        volumes:
           - "/dev/shm:/dev/shm"
         privileged: true
         ulimits:
@@ -15,8 +15,11 @@ services:
     
     device-camera-rpicamv2-example:
         image: chalmersrevere/opendlv-device-camera-rpicamv2-example-armhf:v0.0.1
+        depends_on:
+          - device-camera-rpicamv2
+        restart: always
         network_mode: "host"
-        devices:
+        volumes:
           - "/dev/shm:/dev/shm"
         privileged: true
         ulimits:
