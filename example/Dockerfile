@@ -28,7 +28,7 @@ RUN mkdir build && \
 # Part to deploy example.
 FROM debian:buster-slim
 RUN apt-get -y update && apt-get -y upgrade 
-RUN apt-get -y install libopencv-core3.2 libopencv-highgui3.2 libopencv-imgproc3.2
+RUN apt-get -y install libopencv-dev
 
 WORKDIR /usr/bin
 COPY --from=builder /tmp/bin/example .

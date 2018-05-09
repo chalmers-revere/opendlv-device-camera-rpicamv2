@@ -65,7 +65,7 @@ int32_t main(int32_t argc, char **argv) {
       while (od4.isRunning()) {
         sharedMemory->wait();
 	  
-	      if (VERBOSE) {
+        if (VERBOSE) {
           cv::Mat sourceImage = cv::cvarrToMat(image, true);
           cv::Mat scaledImage;
           sharedMemory->lock();
@@ -73,7 +73,7 @@ int32_t main(int32_t argc, char **argv) {
           sharedMemory->unlock();
 
           std::vector<unsigned char> buffer;
-          cv::imencode("jpeg", scaledImage, buffer);
+          cv::imencode(".jpeg", scaledImage, buffer);
           std::string data(buffer.begin(), buffer.end());
 
           opendlv::proxy::ImageReading imageReading;
@@ -83,7 +83,7 @@ int32_t main(int32_t argc, char **argv) {
           imageReading.data(data);
 
           od4.send(imageReading, cluon::time::now(), ID);
-	      }
+        }
       }
 
       cvReleaseImageHeader(&image);
