@@ -17,7 +17,7 @@ cmake_minimum_required(VERSION 3.2)
 
 project(opendlv-device-camera-rpicamv2)
 
-set(CLUON_COMPLETE cluon-complete-v0.0.87.hpp)
+set(CLUON_COMPLETE cluon-complete-v0.0.92.hpp)
 
 set(CMAKE_MODULE_PATH ${CMAKE_MODULE_PATH} /usr/local/lib/cmake)
 set(CMAKE_MODULE_PATH "${CMAKE_CURRENT_SOURCE_DIR}" ${CMAKE_MODULE_PATH})

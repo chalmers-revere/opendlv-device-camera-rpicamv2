@@ -1,6 +1,6 @@
 // This is an auto-generated header-only single-file distribution of libcluon.
-// Date: Sun, 06 May 2018 22:33:09 +0200
-// Version: 0.0.87
+// Date: Thu, 10 May 2018 21:37:38 +0200
+// Version: 0.0.92
 //
 //
 // Implementation of N4562 std::experimental::any (merged into C++17) for C++11 compilers.
@@ -264,7 +264,10 @@ private: // Storage and Virtual Method Table
 
         static void swap(storage_union& lhs, storage_union& rhs) noexcept
         {
-            std::swap(reinterpret_cast<T&>(lhs.stack), reinterpret_cast<T&>(rhs.stack));
+            storage_union tmp_storage;
+            move(rhs, tmp_storage);
+            move(lhs, rhs);
+            move(tmp_storage, lhs);
         }
     };
 
@@ -4639,6 +4642,8 @@ inline cluon::data::TimeStamp now() noexcept {
 
     // Link against ws2_32.lib for networking.
     #pragma comment(lib, "ws2_32.lib")
+    // Link against iphlpapi.lib for address resolving.
+    #pragma comment(lib, "iphlpapi.lib")
 
     // Avoid include definitions from Winsock v1.
     #define WIN32_LEAN_AND_MEAN
@@ -5157,9 +5162,16 @@ class LIBCLUON_API UDPSender {
      */
     std::pair<ssize_t, int32_t> send(std::string &&data) const noexcept;
 
+   public:
+    /**
+     * @return Port that this UDP sender will use for sending or 0 if no information available.
+     */
+    uint16_t getSendFromPort() const noexcept;
+
    private:
     mutable std::mutex m_socketMutex{};
     int32_t m_socket{-1};
+    uint16_t m_portToSentFrom{0};
     struct sockaddr_in m_sendToAddress {};
 };
 } // namespace cluon
@@ -5203,6 +5215,7 @@ class LIBCLUON_API UDPSender {
 #include <chrono>
 #include <functional>
 #include <mutex>
+#include <set>
 #include <string>
 #include <thread>
 
@@ -5258,10 +5271,12 @@ class LIBCLUON_API UDPReceiver {
      * @param receiveFromAddress Numerical IPv4 address to receive UDP packets from.
      * @param receiveFromPort Port to receive UDP packets from.
      * @param delegate Functional (noexcept) to handle received bytes; parameters are received data, sender, timestamp.
+     * @param localSendFromPort Port that an application is using to send data. This port (> 0) is ignored when data is received.
      */
     UDPReceiver(const std::string &receiveFromAddress,
                 uint16_t receiveFromPort,
-                std::function<void(std::string &&, std::string &&, std::chrono::system_clock::time_point &&)> delegate) noexcept;
+                std::function<void(std::string &&, std::string &&, std::chrono::system_clock::time_point &&)> delegate,
+                uint16_t localSendFromPort = 0) noexcept;
     ~UDPReceiver() noexcept;
 
     /**
@@ -5284,6 +5299,8 @@ class LIBCLUON_API UDPReceiver {
    private:
     int32_t m_socket{-1};
     bool m_isBlockingSocket{true};
+    std::set<unsigned long> m_listOfLocalIPAddresses{};
+    uint16_t m_localSendFromPort;
     struct sockaddr_in m_receiveFromAddress {};
     struct ip_mreq m_mreq {};
     bool m_isMulticast{false};
@@ -7680,7 +7697,8 @@ namespace cluon {
 /**
 This class provides an interface to an OpenDaVINCI v4 session. An OpenDaVINCI
 v4 session allows the automatic exchange of time-stamped Envelopes carrying
-user-defined messages usually using UDP multicast.
+user-defined messages usually using UDP multicast. A running OD4Session will not
+receive the bytes that itself has sent to other microservices.
 
 There are two ways to participate in an OpenDaVINCI session. Variant A is simply
 calling a user-supplied lambda whenever a new Envelope is received:
@@ -8927,6 +8945,7 @@ inline TerminateHandler::TerminateHandler() noexcept {
 #else
     #include <arpa/inet.h>
     #include <sys/socket.h>
+    #include <sys/types.h>
     #include <unistd.h>
 #endif
 // clang-format on
@@ -8967,6 +8986,23 @@ inline UDPSender::UDPSender(const std::string &sendToAddress, uint16_t sendToPor
 
         m_socket = ::socket(PF_INET, SOCK_DGRAM, IPPROTO_UDP);
 
+        // Bind to random address/port but store sender port.
+        if (!(m_socket < 0)) {
+            struct sockaddr_in sendFromAddress;
+            std::memset(&sendFromAddress, 0, sizeof(sendFromAddress));
+            sendFromAddress.sin_family = AF_INET;
+            sendFromAddress.sin_port = 0; // Randomly choose a port to bind.
+            if (0 == ::bind(m_socket, reinterpret_cast<struct sockaddr *>(&sendFromAddress), sizeof(sendFromAddress))) { // NOLINT
+                struct sockaddr tmpAddr;
+                socklen_t length = sizeof(tmpAddr);
+                if (0 == ::getsockname(m_socket, &tmpAddr, &length)) {
+                    struct sockaddr_in tmpAddrIn;
+                    std::memcpy(&tmpAddrIn, &tmpAddr, sizeof(tmpAddrIn)); // NOLINT
+                    m_portToSentFrom = ntohs(tmpAddrIn.sin_port);
+                }
+            }
+        }
+
 #ifdef WIN32
         if (m_socket < 0) {
             std::cerr << "[cluon::UDPSender] Error while creating socket: " << WSAGetLastError() << std::endl;
@@ -8988,6 +9024,10 @@ inline UDPSender::~UDPSender() noexcept {
 #endif
     }
     m_socket = -1;
+}
+
+inline uint16_t UDPSender::getSendFromPort() const noexcept {
+    return m_portToSentFrom;
 }
 
 inline std::pair<ssize_t, int32_t> UDPSender::send(std::string &&data) const noexcept {
@@ -9040,7 +9080,13 @@ inline std::pair<ssize_t, int32_t> UDPSender::send(std::string &&data) const noe
 
 // clang-format off
 #ifdef WIN32
-    #include <errno.h>
+    #include <cstdio>
+    #include <cerrno>
+
+    #include <winsock2.h>
+    #include <iphlpapi.h>
+    #include <ws2tcpip.h>
+
     #include <iostream>
 #else
     #include <arpa/inet.h>
@@ -9049,6 +9095,11 @@ inline std::pair<ssize_t, int32_t> UDPSender::send(std::string &&data) const noe
     #include <sys/types.h>
     #include <fcntl.h>
     #include <unistd.h>
+#endif
+
+#ifndef WIN32
+    #include <ifaddrs.h>
+    #include <netdb.h>
 #endif
 // clang-format on
 
@@ -9065,8 +9116,10 @@ namespace cluon {
 
 inline UDPReceiver::UDPReceiver(const std::string &receiveFromAddress,
                          uint16_t receiveFromPort,
-                         std::function<void(std::string &&, std::string &&, std::chrono::system_clock::time_point &&)> delegate) noexcept
-    : m_receiveFromAddress()
+                         std::function<void(std::string &&, std::string &&, std::chrono::system_clock::time_point &&)> delegate,
+                         uint16_t localSendFromPort) noexcept
+    : m_localSendFromPort(localSendFromPort)
+    , m_receiveFromAddress()
     , m_mreq()
     , m_readFromSocketThread()
     , m_delegate(std::move(delegate)) {
@@ -9204,6 +9257,43 @@ inline UDPReceiver::UDPReceiver(const std::string &receiveFromAddress,
             } else if (!isValid) {
                 closeSocket(EBADF);
             }
+        }
+
+        // Fill list of local IP address to avoid sending data to ourselves.
+        if (!(m_socket < 0)) {
+#ifdef WIN32
+            DWORD size{0};
+            if (ERROR_BUFFER_OVERFLOW == GetAdaptersAddresses(AF_UNSPEC, GAA_FLAG_INCLUDE_PREFIX, NULL, NULL, &size)) {
+                PIP_ADAPTER_ADDRESSES adapters = reinterpret_cast<PIP_ADAPTER_ADDRESSES>(malloc(size));
+                if (ERROR_SUCCESS == GetAdaptersAddresses(AF_UNSPEC, GAA_FLAG_INCLUDE_PREFIX, NULL, adapters, &size)) {
+                    for (PIP_ADAPTER_ADDRESSES adapter = adapters; nullptr != adapter; adapter = adapter->Next) {
+                        for (PIP_ADAPTER_UNICAST_ADDRESS unicastAddress = adapter->FirstUnicastAddress; unicastAddress != NULL; unicastAddress = unicastAddress->Next) {
+                            if (AF_INET == unicastAddress->Address.lpSockaddr->sa_family) {
+                                ::getnameinfo(unicastAddress->Address.lpSockaddr, unicastAddress->Address.iSockaddrLength, nullptr, 0, NULL, 0, NI_NUMERICHOST);
+                                std::memcpy(&tmpSocketAddress, unicastAddress->Address.lpSockaddr, sizeof(tmpSocketAddress));
+                                const unsigned long LOCAL_IP = tmpSocketAddress.sin_addr.s_addr;
+                                m_listOfLocalIPAddresses.insert(LOCAL_IP);
+                            }
+                        }
+                    }
+                }
+                free(adapters);
+            }
+#else
+            struct ifaddrs *interfaceAddress;
+            if (0 == ::getifaddrs(&interfaceAddress)) {
+                for (struct ifaddrs *it = interfaceAddress; nullptr != it; it = it->ifa_next) {
+                    if ( (nullptr != it->ifa_addr) && (it->ifa_addr->sa_family == AF_INET) ) {
+                        if (0 == ::getnameinfo(it->ifa_addr, sizeof(struct sockaddr_in), nullptr, 0, nullptr, 0, NI_NUMERICHOST)) {
+                            std::memcpy(&tmpSocketAddress, it->ifa_addr, sizeof(tmpSocketAddress));
+                            const unsigned long LOCAL_IP = tmpSocketAddress.sin_addr.s_addr;
+                            m_listOfLocalIPAddresses.insert(LOCAL_IP);
+                        }
+                    }
+                }
+                ::freeifaddrs(interfaceAddress);
+            }
+#endif
         }
 
         if (!(m_socket < 0)) {
@@ -9398,10 +9488,19 @@ inline void UDPReceiver::readFromSocket() noexcept {
                                 &((reinterpret_cast<struct sockaddr_in *>(&remote))->sin_addr), // NOLINT
                                 remoteAddress.data(),
                                 remoteAddress.max_size());
+                    const unsigned long RECVFROM_IP{reinterpret_cast<struct sockaddr_in *>(&remote)->sin_addr.s_addr}; // NOLINT
                     const uint16_t RECVFROM_PORT{ntohs(reinterpret_cast<struct sockaddr_in *>(&remote)->sin_port)}; // NOLINT
 
-                    // Create a pipeline entry to be processed concurrently.
+                    // Check if the bytes actually came from us.
+                    bool sentFromUs{false};
                     {
+                        auto pos = m_listOfLocalIPAddresses.find(RECVFROM_IP);
+                        const bool sentFromLocalIP = (pos != m_listOfLocalIPAddresses.end() && (*pos == RECVFROM_IP));
+                        sentFromUs = sentFromLocalIP && (m_localSendFromPort == RECVFROM_PORT);
+                    }
+
+                    // Create a pipeline entry to be processed concurrently.
+                    if (!sentFromUs) {
                         PipelineEntry pe;
                         pe.m_data       = std::string(buffer.data(), static_cast<size_t>(bytesRead));
                         pe.m_from       = std::string(remoteAddress.data()) + ':' + std::to_string(RECVFROM_PORT);
@@ -12673,7 +12772,7 @@ inline OD4Session::OD4Session(uint16_t CID, std::function<void(cluon::data::Enve
     m_receiver = std::make_unique<cluon::UDPReceiver>(
         "225.0.0." + std::to_string(CID), 12175, [this](std::string &&data, std::string &&from, std::chrono::system_clock::time_point &&timepoint) {
             this->callback(std::move(data), std::move(from), std::move(timepoint));
-        });
+        }, m_sender.getSendFromPort() /* passing our local send from port to the UDPReceiver to filter out our own bytes */);
 }
 
 inline void OD4Session::timeTrigger(float freq, std::function<bool()> delegate) noexcept {
@@ -15808,7 +15907,7 @@ inline int32_t cluon_replay(int32_t argc, char **argv, bool monitorSTDIN) {
             std::unique_ptr<cluon::OD4Session> od4;
             if (0 != commandlineArguments.count("cid")) {
                 // Interface to a running OpenDaVINCI session (ignoring any incoming Envelopes).
-                od4 = std::make_unique<cluon::OD4Session>(static_cast<uint16_t>(std::stoi(commandlineArguments["cid"])), [](auto){});
+                od4 = std::make_unique<cluon::OD4Session>(static_cast<uint16_t>(std::stoi(commandlineArguments["cid"])), [](auto){}); // LCOV_EXCL_LINE
             }
 
             {

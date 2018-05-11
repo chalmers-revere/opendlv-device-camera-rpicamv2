@@ -13,30 +13,31 @@
 # You should have received a copy of the GNU General Public License
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
-FROM debian:buster-slim as builder
-
-RUN apt-get -y update && apt-get -y upgrade 
-RUN apt-get -y install cmake g++ git make
+FROM resin/raspberry-pi-debian:buster as builder
+RUN [ "cross-build-start" ]
+RUN apt-get -y update
+RUN apt-get -y install apt-utils 
+RUN apt-get -y install cmake g++ git make upx
 
 RUN git clone https://github.com/raspberrypi/userland
 
-RUN mkdir userland/build && cd userland/build && cmake -D CMAKE_BUILD_TYPE=Debug .. && make install
+RUN mkdir userland/build && cd userland/build && cmake -D CMAKE_BUILD_TYPE=Debug .. && make -j4 && make install
 
 RUN usermod -a -G video root
 
 RUN git clone https://github.com/cedricve/raspicam
-RUN mkdir raspicam/build && cd raspicam/build && cmake -D CMAKE_BUILD_TYPE=Debug .. && make install
+RUN mkdir raspicam/build && cd raspicam/build && cmake -D CMAKE_BUILD_TYPE=Debug .. && make -j4 && make install
 
 ADD . /opt/sources
 WORKDIR /opt/sources
 RUN mkdir build && \
     cd build && \
     cmake -D CMAKE_BUILD_TYPE=Debug -D CMAKE_INSTALL_PREFIX=/tmp/build-dest .. && \
-    make && make install
+    make && make install && upx -9 /tmp/build-dest/bin/opendlv-device-camera-rpicamv2
+RUN [ "cross-build-end" ]
 
-
-FROM debian:buster-slim
-
+FROM resin/raspberry-pi-debian:buster
+RUN [ "cross-build-start" ]
 WORKDIR /usr/bin
 COPY --from=builder /tmp/build-dest/ /usr/
 COPY --from=builder /usr/local/lib/libraspicam.* \
@@ -52,3 +53,4 @@ COPY --from=builder /usr/local/lib/libraspicam.* \
   /usr/lib/
 
 CMD ["/usr/bin/opendlv-device-camera-rpicamv2"]
+RUN [ "cross-build-end" ]

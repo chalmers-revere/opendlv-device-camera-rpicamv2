@@ -67,6 +67,9 @@ int32_t main(int32_t argc, char **argv) {
       image->imageDataOrigin = image->imageData;
       sharedMemory->unlock();
 
+      if (VERBOSE) {
+        cv::namedWindow( "Display window", cv::WINDOW_AUTOSIZE);
+      }
       while (od4.isRunning()) {
         sharedMemory->wait();
 
@@ -80,6 +83,8 @@ int32_t main(int32_t argc, char **argv) {
           cv::resize(sourceImage, scaledImage, cv::Size(width, height), 0, 0, cv::INTER_NEAREST);
           sharedMemory->unlock();
         }
+
+
         
         // Start working with the image
 
@@ -98,6 +103,8 @@ int32_t main(int32_t argc, char **argv) {
         float estimatedDetectionAngle = 0.0f;
         float estimatedDetectionDistance = 0.0f;
         if (VERBOSE) {
+          cv::imshow("Dispay window", scaledImage);
+          cv::waitKey(1);
           std::cout << "The target was found at angle " << estimatedDetectionAngle 
             << " at distance " << estimatedDetectionDistance << std::endl;
         }
