@@ -17,14 +17,14 @@
 FROM resin/armv7hf-debian:buster as builder
 RUN [ "cross-build-start" ]
 RUN apt-get update -y && apt-get install -y apt-utils
-RUN apt-get install -y cmake g++ libopencv-dev libopencv-core-dev libopencv-highgui-dev make upx
+RUN apt-get install -y cmake g++ libopencv-dev libopencv-core-dev libopencv-highgui-dev make 
 
 ADD . /opt/sources
 WORKDIR /opt/sources
 RUN mkdir build && \
     cd build && \
     cmake -D CMAKE_BUILD_TYPE=Release -D CMAKE_INSTALL_PREFIX=/tmp .. && \
-    make && make install && upx -9 /tmp/bin/example
+    make && make install 
 RUN [ "cross-build-end" ]  
 
 

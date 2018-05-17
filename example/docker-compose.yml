@@ -28,4 +28,4 @@ services:
           memlock:
             soft: 4000000
             hard: 4000000
-        command: "/usr/bin/example --cid=111 --name=cam0 --width=1280 --height=960 --bpp=24 --verbose=0"
+        command: "/usr/bin/example --cid=111 --name=cam0 --traincnn=1 --width=1280 --height=960 --bpp=24 --verbose=0"
