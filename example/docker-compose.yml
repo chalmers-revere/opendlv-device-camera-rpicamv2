@@ -19,8 +19,10 @@ services:
           - device-camera-rpicamv2
         restart: always
         network_mode: "host"
+        working_dir: /opt/
         volumes:
           - "/dev/shm:/dev/shm"
+          - .:/opt/
         privileged: true
         ulimits:
           memlock:
