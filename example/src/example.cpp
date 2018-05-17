@@ -29,22 +29,21 @@
 #include "opendlv-standard-message-set.hpp"
 
 #include "tiny_dnn/tiny_dnn.h"
-using namespace tiny_dnn;
-using namespace tiny_dnn::layers;
-using namespace tiny_dnn::activation;
 
 int32_t main(int32_t argc, char **argv) {
   int32_t retCode{0};
   auto commandlineArguments = cluon::getCommandlineArguments(argc, argv);
-  if ((0 == commandlineArguments.count("name")) || (0 == commandlineArguments.count("cid"))) {
+  if ((0 == commandlineArguments.count("name")) || (0 == commandlineArguments.count("cid")) || (0 == commandlineArguments.count("traincnn"))) {
     std::cerr << argv[0] << " accesses video data using shared memory provided using the command line parameter --name=." << std::endl;
     std::cerr << "Usage:   " << argv[0] << " --cid=<OpenDaVINCI session> --name=<name for the associated shared memory> [--id=<sender stamp>] [--verbose]" << std::endl;
     std::cerr << "         --name:    name of the shared memory to use" << std::endl;
+    std::cerr << "         --traincnn: set 1 or 0 for training the tiny dnn example and saving a net binary" << std::endl;
     std::cerr << "         --verbose: when set, a thumbnail of the image contained in the shared memory is sent" << std::endl;
-    std::cerr << "Example: " << argv[0] << " --cid=111 --name=cam0" << std::endl;
+    std::cerr << "Example: " << argv[0] << " --cid=111 --name=cam0 --traincnn=1" << std::endl;
     retCode = 1;
   } else {
     bool const VERBOSE{commandlineArguments.count("verbose") != 0};
+    bool const TRAINCNN{std::stoi(commandlineArguments["cid"]) == 1};
     uint32_t const WIDTH{1280};
     uint32_t const HEIGHT{960};
     uint32_t const BPP{24};
@@ -66,6 +65,80 @@ int32_t main(int32_t argc, char **argv) {
       image->imageData = sharedMemory->data();
       image->imageDataOrigin = image->imageData;
       sharedMemory->unlock();
+
+
+      // TINYDNN EXAMPLE: https://github.com/tiny-dnn/tiny-dnn/blob/master/examples/sinus_fit/sinus_fit.cpp
+
+      if (TRAINCNN) {
+        tiny_dnn::network<tiny_dnn::sequential> net;
+        net << tiny_dnn::fully_connected_layer(1, 10);
+        net << tiny_dnn::tanh_layer();
+        net << tiny_dnn::fully_connected_layer(10, 10);
+        net << tiny_dnn::tanh_layer();
+        net << tiny_dnn::fully_connected_layer(10, 1);
+
+        // create input and desired output on a period
+        std::vector<tiny_dnn::vec_t> X;
+        std::vector<tiny_dnn::vec_t> sinusX;
+        for (float x = -3.1416f; x < 3.1416f; x += 0.2f) {
+          tiny_dnn::vec_t vx    = {x};
+          tiny_dnn::vec_t vsinx = {sinf(x)};
+
+          X.push_back(vx);
+          sinusX.push_back(vsinx);
+        }
+
+        // set learning parameters
+        size_t batch_size = 16;    // 16 samples for each network weight update
+        int epochs        = 2000;  // 2000 presentation of all samples
+        tiny_dnn::adamax opt;
+
+        // this lambda function will be called after each epoch
+        int iEpoch              = 0;
+        auto on_enumerate_epoch = [&]() {
+          // compute loss and disp 1/100 of the time
+          iEpoch++;
+          if (iEpoch % 100) return;
+
+          double loss = net.get_loss<tiny_dnn::mse>(X, sinusX);
+          std::cout << "epoch=" << iEpoch << "/" << epochs << " loss=" << loss
+                    << std::endl;
+        };
+
+        // learn
+        std::cout << "learning the sinus function with 2000 epochs:" << std::endl;
+        net.fit<tiny_dnn::mse>(opt, X, sinusX, batch_size, epochs, []() {},
+                               on_enumerate_epoch);
+
+        std::cout << std::endl
+                  << "Training finished, now computing prediction results:"
+                  << std::endl;
+        net.save("net");
+
+
+      }
+      tiny_dnn::network<tiny_dnn::sequential> net2;
+      net2.load("net");
+      // compare prediction and desired output
+      float fMaxError = 0.f;
+      for (float x = -3.1416f; x < 3.1416f; x += 0.2f) {
+        tiny_dnn::vec_t xv = {x};
+        float fPredicted   = net2.predict(xv)[0];
+        float fDesired     = sinf(x);
+
+        std::cout << "x=" << x << " sinX=" << fDesired
+                  << " predicted=" << fPredicted << std::endl;
+
+        // update max error
+        float fError = std::fabs(fPredicted - fDesired);
+
+        if (fMaxError < fError) fMaxError = fError;
+      }
+
+      std::cout << std::endl << "max_error=" << fMaxError << std::endl;
+
+
+
       int32_t i = 0;
       while (od4.isRunning()) {
         sharedMemory->wait();
@@ -81,20 +154,6 @@ int32_t main(int32_t argc, char **argv) {
           sharedMemory->unlock();
         }
 
-
-        
-        // Start working with the image
-
-        // For example use tinyDNN.
-        /*
-        network<sequential> net;
-        net << conv(32, 32, 5, 1, 6, padding::same) << tanh()  // in:32x32x1, 5x5conv, 6fmaps
-          << max_pool(32, 32, 6, 2) << tanh()                // in:32x32x6, 2x2pooling
-          << conv(16, 16, 5, 6, 16, padding::same) << tanh() // in:16x16x6, 5x5conv, 16fmaps
-          << max_pool(16, 16, 16, 2) << tanh()               // in:16x16x16, 2x2pooling
-          << fc(8*8*16, 100) << tanh()                       // in:8x8x16, out:100
-          << fc(100, 10) << softmax();                       // in:100 out:10
-        */
 
         // Make an estimation.
         float estimatedDetectionAngle = 0.0f;
