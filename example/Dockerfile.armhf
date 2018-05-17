@@ -14,11 +14,10 @@
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
 # Part to build example.
-FROM resin/raspberry-pi-debian:buster as builder
+FROM resin/armv7hf-debian:buster as builder
 RUN [ "cross-build-start" ]
-# Do not run apt-get upgrade/ will break cross compiling. Problems in in dependencies...
-RUN apt-get -y update && apt-get install apt-utils
-RUN apt-get -y install cmake g++ libopencv-dev libopencv-core-dev libopencv-highgui-dev make upx
+RUN apt-get update -y && apt-get install -y apt-utils
+RUN apt-get install -y cmake g++ libopencv-dev libopencv-core-dev libopencv-highgui-dev make upx
 
 ADD . /opt/sources
 WORKDIR /opt/sources
@@ -37,6 +36,5 @@ RUN apt-get -y install libopencv-calib3d3.2 libopencv-contrib3.2 libopencv-core3
 
 WORKDIR /usr/bin
 COPY --from=builder /tmp/bin/example .
-ENTRYPOINT ["/usr/bin/example"]
 
 RUN [ "cross-build-end" ]  
