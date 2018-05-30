@@ -43,7 +43,7 @@ int32_t main(int32_t argc, char **argv) {
     retCode = 1;
   } else {
     bool const VERBOSE{commandlineArguments.count("verbose") != 0};
-    bool const TRAINCNN{std::stoi(commandlineArguments["cid"]) == 1};
+    bool const TRAINCNN{std::stoi(commandlineArguments["traincnn"]) == 1};
     uint32_t const WIDTH{1280};
     uint32_t const HEIGHT{960};
     uint32_t const BPP{24};
