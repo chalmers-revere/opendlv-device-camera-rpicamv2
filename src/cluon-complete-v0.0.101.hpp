@@ -1,6 +1,6 @@
 // This is an auto-generated header-only single-file distribution of libcluon.
-// Date: Thu, 10 May 2018 21:37:38 +0200
-// Version: 0.0.92
+// Date: Wed, 13 Jun 2018 20:27:18 +0200
+// Version: 0.0.101
 //
 //
 // Implementation of N4562 std::experimental::any (merged into C++17) for C++11 compilers.
@@ -3748,8 +3748,8 @@ class LIB_API TimeStamp {
         TimeStamp() = default;
         TimeStamp(const TimeStamp&) = default;
         TimeStamp& operator=(const TimeStamp&) = default;
-        TimeStamp(TimeStamp&&) noexcept = default; // NOLINT
-        TimeStamp& operator=(TimeStamp&&) noexcept = default; // NOLINT
+        TimeStamp(TimeStamp&&) = default; // NOLINT
+        TimeStamp& operator=(TimeStamp&&) = default; // NOLINT
         ~TimeStamp() = default;
 
     public:
@@ -3777,6 +3777,7 @@ class LIB_API TimeStamp {
 
         template<class PreVisitor, class Visitor, class PostVisitor>
         void accept(PreVisitor &&preVisit, Visitor &&visit, PostVisitor &&postVisit) {
+            (void)visit; // Prevent warnings from empty messages.
             std::forward<PreVisitor>(preVisit)(ID(), ShortName(), LongName());
             
             doTripletForwardVisit(1, std::move("int32_t"s), std::move("seconds"s), m_seconds, preVisit, visit, postVisit);
@@ -3912,8 +3913,8 @@ class LIB_API Envelope {
         Envelope() = default;
         Envelope(const Envelope&) = default;
         Envelope& operator=(const Envelope&) = default;
-        Envelope(Envelope&&) noexcept = default; // NOLINT
-        Envelope& operator=(Envelope&&) noexcept = default; // NOLINT
+        Envelope(Envelope&&) = default; // NOLINT
+        Envelope& operator=(Envelope&&) = default; // NOLINT
         ~Envelope() = default;
 
     public:
@@ -3961,6 +3962,7 @@ class LIB_API Envelope {
 
         template<class PreVisitor, class Visitor, class PostVisitor>
         void accept(PreVisitor &&preVisit, Visitor &&visit, PostVisitor &&postVisit) {
+            (void)visit; // Prevent warnings from empty messages.
             std::forward<PreVisitor>(preVisit)(ID(), ShortName(), LongName());
             
             doTripletForwardVisit(1, std::move("int32_t"s), std::move("dataType"s), m_dataType, preVisit, visit, postVisit);
@@ -4112,8 +4114,8 @@ class LIB_API PlayerCommand {
         PlayerCommand() = default;
         PlayerCommand(const PlayerCommand&) = default;
         PlayerCommand& operator=(const PlayerCommand&) = default;
-        PlayerCommand(PlayerCommand&&) noexcept = default; // NOLINT
-        PlayerCommand& operator=(PlayerCommand&&) noexcept = default; // NOLINT
+        PlayerCommand(PlayerCommand&&) = default; // NOLINT
+        PlayerCommand& operator=(PlayerCommand&&) = default; // NOLINT
         ~PlayerCommand() = default;
 
     public:
@@ -4141,6 +4143,7 @@ class LIB_API PlayerCommand {
 
         template<class PreVisitor, class Visitor, class PostVisitor>
         void accept(PreVisitor &&preVisit, Visitor &&visit, PostVisitor &&postVisit) {
+            (void)visit; // Prevent warnings from empty messages.
             std::forward<PreVisitor>(preVisit)(ID(), ShortName(), LongName());
             
             doTripletForwardVisit(1, std::move("uint8_t"s), std::move("command"s), m_command, preVisit, visit, postVisit);
@@ -4276,8 +4279,8 @@ class LIB_API PlayerStatus {
         PlayerStatus() = default;
         PlayerStatus(const PlayerStatus&) = default;
         PlayerStatus& operator=(const PlayerStatus&) = default;
-        PlayerStatus(PlayerStatus&&) noexcept = default; // NOLINT
-        PlayerStatus& operator=(PlayerStatus&&) noexcept = default; // NOLINT
+        PlayerStatus(PlayerStatus&&) = default; // NOLINT
+        PlayerStatus& operator=(PlayerStatus&&) = default; // NOLINT
         ~PlayerStatus() = default;
 
     public:
@@ -4310,6 +4313,7 @@ class LIB_API PlayerStatus {
 
         template<class PreVisitor, class Visitor, class PostVisitor>
         void accept(PreVisitor &&preVisit, Visitor &&visit, PostVisitor &&postVisit) {
+            (void)visit; // Prevent warnings from empty messages.
             std::forward<PreVisitor>(preVisit)(ID(), ShortName(), LongName());
             
             doTripletForwardVisit(1, std::move("uint8_t"s), std::move("state"s), m_state, preVisit, visit, postVisit);
@@ -4819,7 +4823,7 @@ class LIBCLUON_API MetaMessage {
     };
 
    public:
-    MetaMessage()                    = default;
+    MetaMessage() noexcept;
     MetaMessage(const MetaMessage &) = default;
     MetaMessage(MetaMessage &&)      = default;
     MetaMessage &operator=(const MetaMessage &) = default;
@@ -5042,6 +5046,133 @@ class LIBCLUON_API TerminateHandler {
 
 #endif
 /*
+ * Copyright (C) 2018  Christian Berger
+ *
+ * This program is free software: you can redistribute it and/or modify
+ * it under the terms of the GNU General Public License as published by
+ * the Free Software Foundation, either version 3 of the License, or
+ * (at your option) any later version.
+ *
+ * This program is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * GNU General Public License for more details.
+ *
+ * You should have received a copy of the GNU General Public License
+ * along with this program.  If not, see <http://www.gnu.org/licenses/>.
+ */
+
+#ifndef CLUON_NOTIFYINGPIPELINE_HPP
+#define CLUON_NOTIFYINGPIPELINE_HPP
+
+//#include "cluon/cluon.hpp"
+
+#include <atomic>
+#include <condition_variable>
+#include <deque>
+#include <functional>
+#include <mutex>
+#include <thread>
+
+namespace cluon {
+
+template <class T>
+class LIBCLUON_API NotifyingPipeline {
+   private:
+    NotifyingPipeline(const NotifyingPipeline &) = delete;
+    NotifyingPipeline(NotifyingPipeline &&)      = delete;
+    NotifyingPipeline &operator=(const NotifyingPipeline &) = delete;
+    NotifyingPipeline &operator=(NotifyingPipeline &&) = delete;
+
+   public:
+    NotifyingPipeline(std::function<void(T &&)> delegate)
+        : m_delegate(delegate) {
+        m_pipelineThread = std::thread(&NotifyingPipeline::processPipeline, this);
+
+        // Let the operating system spawn the thread.
+        using namespace std::literals::chrono_literals; // NOLINT
+        do { std::this_thread::sleep_for(1ms); } while (!m_pipelineThreadRunning.load());
+    }
+
+    ~NotifyingPipeline() {
+        m_pipelineThreadRunning.store(false);
+
+        // Wake any waiting threads.
+        m_pipelineCondition.notify_all();
+
+        // Joining the thread could fail.
+        try {
+            if (m_pipelineThread.joinable()) {
+                m_pipelineThread.join();
+            }
+        } catch (...) {} // LCOV_EXCL_LINE
+    }
+
+   public:
+    inline void add(T &&entry) noexcept {
+        std::unique_lock<std::mutex> lck(m_pipelineMutex);
+        m_pipeline.emplace_back(entry);
+    }
+
+    inline void notifyAll() noexcept { m_pipelineCondition.notify_all(); }
+
+    inline bool isRunning() noexcept { return m_pipelineThreadRunning.load(); }
+
+   private:
+    inline void processPipeline() noexcept {
+        // Indicate to caller that we are ready.
+        m_pipelineThreadRunning.store(true);
+
+        while (m_pipelineThreadRunning.load()) {
+            std::unique_lock<std::mutex> lck(m_pipelineMutex);
+            // Wait until the thread should stop or data is available.
+            m_pipelineCondition.wait(lck, [this] { return (!this->m_pipelineThreadRunning.load() || !this->m_pipeline.empty()); });
+
+            // The condition will automatically lock the mutex after waking up.
+            // As we are locking per entry, we need to unlock the mutex first.
+            lck.unlock();
+
+            uint32_t entries{0};
+            {
+                lck.lock();
+                entries = static_cast<uint32_t>(m_pipeline.size());
+                lck.unlock();
+            }
+            for (uint32_t i{0}; i < entries; i++) {
+                T entry;
+                {
+                    lck.lock();
+                    entry = m_pipeline.front();
+                    lck.unlock();
+                }
+
+                if (nullptr != m_delegate) {
+                    m_delegate(std::move(entry));
+                }
+
+                {
+                    lck.lock();
+                    m_pipeline.pop_front();
+                    lck.unlock();
+                }
+            }
+        }
+    }
+
+   private:
+    std::function<void(T &&)> m_delegate;
+
+    std::atomic<bool> m_pipelineThreadRunning{false};
+    std::thread m_pipelineThread{};
+    std::mutex m_pipelineMutex{};
+    std::condition_variable m_pipelineCondition{};
+
+    std::deque<T> m_pipeline{};
+};
+} // namespace cluon
+
+#endif
+/*
  * Copyright (C) 2017-2018  Christian Berger
  *
  * This program is free software: you can redistribute it and/or modify
@@ -5197,6 +5328,7 @@ class LIBCLUON_API UDPSender {
 #ifndef CLUON_UDPRECEIVER_HPP
 #define CLUON_UDPRECEIVER_HPP
 
+//#include "cluon/NotifyingPipeline.hpp"
 //#include "cluon/cluon.hpp"
 
 // clang-format off
@@ -5214,6 +5346,7 @@ class LIBCLUON_API UDPSender {
 #include <deque>
 #include <chrono>
 #include <functional>
+#include <memory>
 #include <mutex>
 #include <set>
 #include <string>
@@ -5294,8 +5427,6 @@ class LIBCLUON_API UDPReceiver {
 
     void readFromSocket() noexcept;
 
-    void processPipeline() noexcept;
-
    private:
     int32_t m_socket{-1};
     bool m_isBlockingSocket{true};
@@ -5312,18 +5443,14 @@ class LIBCLUON_API UDPReceiver {
     std::function<void(std::string &&, std::string &&, std::chrono::system_clock::time_point)> m_delegate{};
 
    private:
-    std::atomic<bool> m_pipelineThreadRunning{false};
-    std::thread m_pipelineThread{};
-    std::mutex m_pipelineMutex{};
-    std::condition_variable m_pipelineCondition{};
-
     class PipelineEntry {
        public:
         std::string m_data;
         std::string m_from;
         std::chrono::system_clock::time_point m_sampleTime;
     };
-    std::deque<PipelineEntry> m_pipeline{};
+
+    std::shared_ptr<cluon::NotifyingPipeline<PipelineEntry>> m_pipeline{};
 };
 } // namespace cluon
 
@@ -5348,6 +5475,7 @@ class LIBCLUON_API UDPReceiver {
 #ifndef CLUON_TCPCONNECTION_HPP
 #define CLUON_TCPCONNECTION_HPP
 
+//#include "cluon/NotifyingPipeline.hpp"
 //#include "cluon/cluon.hpp"
 
 // clang-format off
@@ -5363,6 +5491,7 @@ class LIBCLUON_API UDPReceiver {
 #include <atomic>
 #include <chrono>
 #include <functional>
+#include <memory>
 #include <mutex>
 #include <string>
 #include <thread>
@@ -5420,6 +5549,16 @@ whether the instance was created successfully and running, the method
 */
 class LIBCLUON_API TCPConnection {
    private:
+    friend class TCPServer;
+
+    /**
+     * Constructor that is only accessible to TCPServer to manage incoming TCP connections.
+     *
+     * @param socket Socket to handle an existing TCP connection described by this socket.
+     */
+    TCPConnection(const int32_t &socket) noexcept;
+
+   private:
     TCPConnection(const TCPConnection &) = delete;
     TCPConnection(TCPConnection &&)      = delete;
     TCPConnection &operator=(const TCPConnection &) = delete;
@@ -5427,7 +5566,7 @@ class LIBCLUON_API TCPConnection {
 
    public:
     /**
-     * Constructor.
+     * Constructor to connect to a TCP server.
      *
      * @param address Numerical IPv4 address to receive UDP packets from.
      * @param port Port to receive UDP packets from.
@@ -5436,10 +5575,16 @@ class LIBCLUON_API TCPConnection {
      */
     TCPConnection(const std::string &address,
                   uint16_t port,
-                  std::function<void(std::string &&, std::chrono::system_clock::time_point &&)> newDataDelegate,
-                  std::function<void()> connectionLostDelegate) noexcept;
+                  std::function<void(std::string &&, std::chrono::system_clock::time_point &&)> newDataDelegate = nullptr,
+                  std::function<void()> connectionLostDelegate                                                  = nullptr) noexcept;
+
     ~TCPConnection() noexcept;
 
+   public:
+    void setOnNewData(std::function<void(std::string &&, std::chrono::system_clock::time_point &&)> newDataDelegate) noexcept;
+    void setOnConnectionLost(std::function<void()> connectionLostDelegate) noexcept;
+
+   public:
     /**
      * @return true if the TCPConnection could successfully be created and is able to receive data.
      */
@@ -5460,6 +5605,7 @@ class LIBCLUON_API TCPConnection {
      * @param errorCode Error code that caused this closing.
      */
     void closeSocket(int errorCode) noexcept;
+    void startReadingFromSocket() noexcept;
     void readFromSocket() noexcept;
 
    private:
@@ -5470,8 +5616,106 @@ class LIBCLUON_API TCPConnection {
     std::atomic<bool> m_readFromSocketThreadRunning{false};
     std::thread m_readFromSocketThread{};
 
+    std::mutex m_newDataDelegateMutex{};
     std::function<void(std::string &&, std::chrono::system_clock::time_point)> m_newDataDelegate{};
+
+    mutable std::mutex m_connectionLostDelegateMutex{};
     std::function<void()> m_connectionLostDelegate{};
+
+   private:
+    class PipelineEntry {
+       public:
+        std::string m_data;
+        std::chrono::system_clock::time_point m_sampleTime;
+    };
+
+    std::shared_ptr<cluon::NotifyingPipeline<PipelineEntry>> m_pipeline{};
+};
+} // namespace cluon
+
+#endif
+/*
+ * Copyright (C) 2018  Christian Berger
+ *
+ * This program is free software: you can redistribute it and/or modify
+ * it under the terms of the GNU General Public License as published by
+ * the Free Software Foundation, either version 3 of the License, or
+ * (at your option) any later version.
+ *
+ * This program is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * GNU General Public License for more details.
+ *
+ * You should have received a copy of the GNU General Public License
+ * along with this program.  If not, see <http://www.gnu.org/licenses/>.
+ */
+
+#ifndef CLUON_TCPSERVER_HPP
+#define CLUON_TCPSERVER_HPP
+
+//#include "cluon/TCPConnection.hpp"
+//#include "cluon/cluon.hpp"
+
+// clang-format off
+#ifdef WIN32
+    #include <Winsock2.h> // for WSAStartUp
+    #include <ws2tcpip.h> // for SOCKET
+#else
+    #include <netinet/in.h>
+#endif
+// clang-format on
+
+#include <cstdint>
+#include <atomic>
+#include <functional>
+#include <mutex>
+#include <string>
+#include <thread>
+
+namespace cluon {
+
+class LIBCLUON_API TCPServer {
+   private:
+    TCPServer(const TCPServer &) = delete;
+    TCPServer(TCPServer &&)      = delete;
+    TCPServer &operator=(const TCPServer &) = delete;
+    TCPServer &operator=(TCPServer &&) = delete;
+
+   public:
+    /**
+     * Constructor to create a TCP server.
+     *
+     * @param port Port to receive UDP packets from.
+     * @param newConnectionDelegate Functional to handle incoming TCP connections.
+     */
+    TCPServer(uint16_t port, std::function<void(std::string &&from, std::shared_ptr<cluon::TCPConnection> connection)> newConnectionDelegate) noexcept;
+
+    ~TCPServer() noexcept;
+
+    /**
+     * @return true if the TCPServer could successfully be created and is able to receive data.
+     */
+    bool isRunning() const noexcept;
+
+   private:
+    /**
+     * This method closes the socket.
+     *
+     * @param errorCode Error code that caused this closing.
+     */
+    void closeSocket(int errorCode) noexcept;
+    void readFromSocket() noexcept;
+
+   private:
+    mutable std::mutex m_socketMutex{};
+    int32_t m_socket{-1};
+
+    std::atomic<bool> m_readFromSocketThreadRunning{false};
+    std::thread m_readFromSocketThread{};
+
+    std::mutex m_newConnectionDelegateMutex{};
+    std::function<void(std::string &&from, std::shared_ptr<cluon::TCPConnection> connection)> m_newConnectionDelegate{};
 };
 } // namespace cluon
 
@@ -6251,8 +6495,16 @@ class LIBCLUON_API FromJSONVisitor {
         }
     }
 
-   private:
+   public:
+    /**
+     * This method returns the base64-decoded representation for the given input.
+     *
+     * @param input to decode from base64
+     * @return Decoded input.
+     */
     std::string decodeBase64(const std::string &input) const noexcept;
+
+   private:
     std::map<std::string, FromJSONVisitor::JSONKeyValue> readKeyValues(std::string &input) noexcept;
 
    private:
@@ -6361,6 +6613,7 @@ class LIBCLUON_API ToJSONVisitor {
         }
     }
 
+   public:
     /**
      * This method returns the base64-encoded representation for the given input.
      *
@@ -7854,8 +8107,6 @@ class LIBCLUON_API OD4Session {
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
 
-// clang-format off
-
 #ifndef CLUON_PLAYER_HPP
 #define CLUON_PLAYER_HPP
 
@@ -7876,25 +8127,25 @@ class LIBCLUON_API OD4Session {
 namespace cluon {
 
 class LIBCLUON_API IndexEntry {
-    public:
-        IndexEntry() = default;
-        IndexEntry(const int64_t &sampleTimeStamp, const uint64_t &filePosition) noexcept;
+   public:
+    IndexEntry() = default;
+    IndexEntry(const int64_t &sampleTimeStamp, const uint64_t &filePosition) noexcept;
 
-    public:
-        int64_t m_sampleTimeStamp{0};
-        uint64_t m_filePosition{0};
-        bool m_available{0};
+   public:
+    int64_t m_sampleTimeStamp{0};
+    uint64_t m_filePosition{0};
+    bool m_available{0};
 };
 
 class LIBCLUON_API Player {
-    private:
-        enum {
-            ONE_MILLISECOND_IN_MICROSECONDS = 1000,
-            ONE_SECOND_IN_MICROSECONDS = 1000 * ONE_MILLISECOND_IN_MICROSECONDS,
-            MAX_DELAY_IN_MICROSECONDS = 1 * ONE_SECOND_IN_MICROSECONDS,
-            LOOK_AHEAD_IN_S = 30,
-            MIN_ENTRIES_FOR_LOOK_AHEAD = 5000,
-        };
+   private:
+    enum {
+        ONE_MILLISECOND_IN_MICROSECONDS = 1000,
+        ONE_SECOND_IN_MICROSECONDS      = 1000 * ONE_MILLISECOND_IN_MICROSECONDS,
+        MAX_DELAY_IN_MICROSECONDS       = 1 * ONE_SECOND_IN_MICROSECONDS,
+        LOOK_AHEAD_IN_S                 = 30,
+        MIN_ENTRIES_FOR_LOOK_AHEAD      = 5000,
+    };
 
    private:
     Player(const Player &) = delete;
@@ -7902,165 +8153,163 @@ class LIBCLUON_API Player {
     Player &operator=(Player &&) = delete;
     Player &operator=(const Player &other) = delete;
 
-    public:
-        /**
-         * Constructor.
-         *
-         * @param file File to play.
-         * @param autoRewind True if the file should be rewind at EOF.
-         * @param threading If set to true, player will load new envelopes from the files in background.
-         */
-        Player(const std::string &file, const bool &autoRewind, const bool &threading) noexcept;
-        ~Player();
+   public:
+    /**
+     * Constructor.
+     *
+     * @param file File to play.
+     * @param autoRewind True if the file should be rewind at EOF.
+     * @param threading If set to true, player will load new envelopes from the files in background.
+     */
+    Player(const std::string &file, const bool &autoRewind, const bool &threading) noexcept;
+    ~Player();
 
-        /**
-         * @return Pair of bool and next cluon::data::Envelope to be replayed;
-         *         if bool is false, no next Envelope is available.
-         */
-        std::pair<bool, cluon::data::Envelope> getNextEnvelopeToBeReplayed() noexcept;
+    /**
+     * @return Pair of bool and next cluon::data::Envelope to be replayed;
+     *         if bool is false, no next Envelope is available.
+     */
+    std::pair<bool, cluon::data::Envelope> getNextEnvelopeToBeReplayed() noexcept;
 
-        /**
-         * @return real delay in microseconds to be waited before the next cluon::data::Envelope should be delivered.
-         */
-        uint32_t delay() const noexcept;
+    /**
+     * @return real delay in microseconds to be waited before the next cluon::data::Envelope should be delivered.
+     */
+    uint32_t delay() const noexcept;
 
-        /**
-         * @return true if there is more data to replay.
-         */
-        bool hasMoreData() const noexcept;
+    /**
+     * @return true if there is more data to replay.
+     */
+    bool hasMoreData() const noexcept;
 
-        /**
-         * This method rewinds the iterators.
-         */
-        void rewind() noexcept;
+    /**
+     * This method rewinds the iterators.
+     */
+    void rewind() noexcept;
 
-        void seekTo(float ratio) noexcept;
+    void seekTo(float ratio) noexcept;
 
-        /**
-         * @return total amount of cluon::data::Envelopes in the .rec file.
-         */
-        uint32_t totalNumberOfEnvelopesInRecFile() const noexcept;
+    /**
+     * @return total amount of cluon::data::Envelopes in the .rec file.
+     */
+    uint32_t totalNumberOfEnvelopesInRecFile() const noexcept;
 
-    private:
-        // Internal methods without Lock.
-        bool hasMoreDataFromRecFile() const noexcept;
+   private:
+    // Internal methods without Lock.
+    bool hasMoreDataFromRecFile() const noexcept;
 
-        /**
-         * This method initializes the global index where the sample
-         * time stamps are sorted chronocally and mapped to the 
-         * corresponding cluon::data::Envelope in the rec file.
-         */
-        void initializeIndex() noexcept;
+    /**
+     * This method initializes the global index where the sample
+     * time stamps are sorted chronocally and mapped to the
+     * corresponding cluon::data::Envelope in the rec file.
+     */
+    void initializeIndex() noexcept;
 
-        /**
-         * This method computes the initially required amount of
-         * cluon::data::Envelope in the cache and fill the cache accordingly.
-         */
-        void computeInitialCacheLevelAndFillCache() noexcept;
+    /**
+     * This method computes the initially required amount of
+     * cluon::data::Envelope in the cache and fill the cache accordingly.
+     */
+    void computeInitialCacheLevelAndFillCache() noexcept;
 
-        /**
-         * This method clears all caches.
-         */
-        void resetCaches() noexcept;
+    /**
+     * This method clears all caches.
+     */
+    void resetCaches() noexcept;
 
-        /**
-         * This method resets the iterators.
-         */
-        inline void resetIterators() noexcept;
+    /**
+     * This method resets the iterators.
+     */
+    inline void resetIterators() noexcept;
 
-        /**
-         * This method fills the cache by trying to read up
-         * to maxNumberOfEntriesToReadFromFile from the rec file.
-         *
-         * @param maxNumberOfEntriesToReadFromFile Maximum number of entries to be read from file.
-         * @return Number of entries read from file.
-         */
-        uint32_t fillEnvelopeCache(const uint32_t &maxNumberOfEntriesToReadFromFile) noexcept;
+    /**
+     * This method fills the cache by trying to read up
+     * to maxNumberOfEntriesToReadFromFile from the rec file.
+     *
+     * @param maxNumberOfEntriesToReadFromFile Maximum number of entries to be read from file.
+     * @return Number of entries read from file.
+     */
+    uint32_t fillEnvelopeCache(const uint32_t &maxNumberOfEntriesToReadFromFile) noexcept;
 
-        /**
-         * This method checks the availability of the next cluon::data::Envelope
-         * to be replayed from the cache.
-         */
-        inline void checkAvailabilityOfNextEnvelopeToBeReplayed() noexcept;
+    /**
+     * This method checks the availability of the next cluon::data::Envelope
+     * to be replayed from the cache.
+     */
+    inline void checkAvailabilityOfNextEnvelopeToBeReplayed() noexcept;
 
-    private: // Data for the Player.
-        bool m_threading;
+   private: // Data for the Player.
+    bool m_threading;
 
-        std::string m_file;
+    std::string m_file;
 
-        // Handle to .rec file.
-        std::fstream m_recFile;
-        bool m_recFileValid;
+    // Handle to .rec file.
+    std::fstream m_recFile;
+    bool m_recFileValid;
 
-    private: // Player states.
-        bool m_autoRewind;
+   private: // Player states.
+    bool m_autoRewind;
 
-    private: // Index and cache management.
-        // Global index: Mapping SampleTimeStamp --> cache entry (holding the actual content from .rec file).
-        mutable std::mutex m_indexMutex;
-        std::multimap<int64_t, IndexEntry> m_index;
+   private: // Index and cache management.
+    // Global index: Mapping SampleTimeStamp --> cache entry (holding the actual content from .rec file).
+    mutable std::mutex m_indexMutex;
+    std::multimap<int64_t, IndexEntry> m_index;
 
-        // Pointers to the current envelope to be replayed and the
-        // envelope that has be replayed from the global index.
-        std::multimap<int64_t, IndexEntry>::iterator m_previousPreviousEnvelopeAlreadyReplayed;
-        std::multimap<int64_t, IndexEntry>::iterator m_previousEnvelopeAlreadyReplayed;
-        std::multimap<int64_t, IndexEntry>::iterator m_currentEnvelopeToReplay;
+    // Pointers to the current envelope to be replayed and the
+    // envelope that has be replayed from the global index.
+    std::multimap<int64_t, IndexEntry>::iterator m_previousPreviousEnvelopeAlreadyReplayed;
+    std::multimap<int64_t, IndexEntry>::iterator m_previousEnvelopeAlreadyReplayed;
+    std::multimap<int64_t, IndexEntry>::iterator m_currentEnvelopeToReplay;
 
-        // Information about the index.
-        std::multimap<int64_t, IndexEntry>::iterator m_nextEntryToReadFromRecFile;
+    // Information about the index.
+    std::multimap<int64_t, IndexEntry>::iterator m_nextEntryToReadFromRecFile;
 
-        uint32_t m_desiredInitialLevel;
+    uint32_t m_desiredInitialLevel;
 
-        // Fields to compute replay throughput for cache management.
-        cluon::data::TimeStamp m_firstTimePointReturningAEnvelope;
-        uint64_t m_numberOfReturnedEnvelopesInTotal;
+    // Fields to compute replay throughput for cache management.
+    cluon::data::TimeStamp m_firstTimePointReturningAEnvelope;
+    uint64_t m_numberOfReturnedEnvelopesInTotal;
 
-        uint32_t m_delay;
+    uint32_t m_delay;
 
-    private:
-        /**
-         * This method sets the state of the envelopeCacheFilling thread.
-         *
-         * @param running False if the thread to fill the Envelope cache shall be joined.
-         */
-        void setEnvelopeCacheFillingRunning(const bool &running) noexcept;
-        bool isEnvelopeCacheFillingRunning() const noexcept;
+   private:
+    /**
+     * This method sets the state of the envelopeCacheFilling thread.
+     *
+     * @param running False if the thread to fill the Envelope cache shall be joined.
+     */
+    void setEnvelopeCacheFillingRunning(const bool &running) noexcept;
+    bool isEnvelopeCacheFillingRunning() const noexcept;
 
-        /**
-         * This method manages the cache.
-         */
-        void manageCache() noexcept;
+    /**
+     * This method manages the cache.
+     */
+    void manageCache() noexcept;
 
-        /**
-         * This method checks whether the cache needs to be refilled.
-         *
-         * @param numberOfEntries Number of entries in cache.
-         * @param refillMultiplicator Multiplicator to modify the amount of envelopes to be refilled.
-         * @return Modified refillMultiplicator recommedned to be used next time 
-         */
-        float checkRefillingCache(const uint32_t &numberOfEntries, float refillMultiplicator) noexcept;
+    /**
+     * This method checks whether the cache needs to be refilled.
+     *
+     * @param numberOfEntries Number of entries in cache.
+     * @param refillMultiplicator Multiplicator to modify the amount of envelopes to be refilled.
+     * @return Modified refillMultiplicator recommedned to be used next time
+     */
+    float checkRefillingCache(const uint32_t &numberOfEntries, float refillMultiplicator) noexcept;
 
-    private:
-        mutable std::mutex m_envelopeCacheFillingThreadIsRunningMutex;
-        bool m_envelopeCacheFillingThreadIsRunning;
-        std::thread m_envelopeCacheFillingThread;
+   private:
+    mutable std::mutex m_envelopeCacheFillingThreadIsRunningMutex;
+    bool m_envelopeCacheFillingThreadIsRunning;
+    std::thread m_envelopeCacheFillingThread;
 
-        // Mapping of pos_type (within .rec file) --> cluon::data::Envelope (read from .rec file).
-        std::map<uint64_t, cluon::data::Envelope> m_envelopeCache;
+    // Mapping of pos_type (within .rec file) --> cluon::data::Envelope (read from .rec file).
+    std::map<uint64_t, cluon::data::Envelope> m_envelopeCache;
 
-    public:
-        void setPlayerListener(std::function<void(cluon::data::PlayerStatus playerStatus)> playerListener) noexcept;
+   public:
+    void setPlayerListener(std::function<void(cluon::data::PlayerStatus playerStatus)> playerListener) noexcept;
 
-    private:
-        std::mutex m_playerListenerMutex;
-        std::function<void(cluon::data::PlayerStatus playerStatus)> m_playerListener{nullptr};
+   private:
+    std::mutex m_playerListenerMutex;
+    std::function<void(cluon::data::PlayerStatus playerStatus)> m_playerListener{nullptr};
 };
 
-}
+} // namespace cluon
 
 #endif
-
-// clang-format on
 /*
  * Copyright (C) 2018  Christian Berger
  *
@@ -8420,6 +8669,7 @@ inline std::map<std::string, std::string> getCommandlineArguments(int32_t argc, 
 //#include "cluon/MetaMessage.hpp"
 
 namespace cluon {
+
 inline MetaMessage::MetaField::MetaFieldDataTypes MetaMessage::MetaField::fieldDataType() const noexcept {
     return m_fieldDataType;
 }
@@ -8466,6 +8716,8 @@ inline MetaMessage::MetaField &MetaMessage::MetaField::defaultInitializationValu
 }
 
 ////////////////////////////////////////////////////////////////////////////////
+
+inline MetaMessage::MetaMessage() noexcept {}
 
 inline std::string MetaMessage::packageName() const noexcept {
     return m_packageName;
@@ -8991,13 +9243,13 @@ inline UDPSender::UDPSender(const std::string &sendToAddress, uint16_t sendToPor
             struct sockaddr_in sendFromAddress;
             std::memset(&sendFromAddress, 0, sizeof(sendFromAddress));
             sendFromAddress.sin_family = AF_INET;
-            sendFromAddress.sin_port = 0; // Randomly choose a port to bind.
+            sendFromAddress.sin_port   = 0;                                                                              // Randomly choose a port to bind.
             if (0 == ::bind(m_socket, reinterpret_cast<struct sockaddr *>(&sendFromAddress), sizeof(sendFromAddress))) { // NOLINT
                 struct sockaddr tmpAddr;
                 socklen_t length = sizeof(tmpAddr);
                 if (0 == ::getsockname(m_socket, &tmpAddr, &length)) {
                     struct sockaddr_in tmpAddrIn;
-                    std::memcpy(&tmpAddrIn, &tmpAddr, sizeof(tmpAddrIn)); // NOLINT
+                    std::memcpy(&tmpAddrIn, &tmpAddr, sizeof(tmpAddrIn)); /* Flawfinder: ignore */ // NOLINT
                     m_portToSentFrom = ntohs(tmpAddrIn.sin_port);
                 }
             }
@@ -9267,10 +9519,11 @@ inline UDPReceiver::UDPReceiver(const std::string &receiveFromAddress,
                 PIP_ADAPTER_ADDRESSES adapters = reinterpret_cast<PIP_ADAPTER_ADDRESSES>(malloc(size));
                 if (ERROR_SUCCESS == GetAdaptersAddresses(AF_UNSPEC, GAA_FLAG_INCLUDE_PREFIX, NULL, adapters, &size)) {
                     for (PIP_ADAPTER_ADDRESSES adapter = adapters; nullptr != adapter; adapter = adapter->Next) {
-                        for (PIP_ADAPTER_UNICAST_ADDRESS unicastAddress = adapter->FirstUnicastAddress; unicastAddress != NULL; unicastAddress = unicastAddress->Next) {
+                        for (PIP_ADAPTER_UNICAST_ADDRESS unicastAddress = adapter->FirstUnicastAddress; unicastAddress != NULL;
+                             unicastAddress                             = unicastAddress->Next) {
                             if (AF_INET == unicastAddress->Address.lpSockaddr->sa_family) {
                                 ::getnameinfo(unicastAddress->Address.lpSockaddr, unicastAddress->Address.iSockaddrLength, nullptr, 0, NULL, 0, NI_NUMERICHOST);
-                                std::memcpy(&tmpSocketAddress, unicastAddress->Address.lpSockaddr, sizeof(tmpSocketAddress));
+                                std::memcpy(&tmpSocketAddress, unicastAddress->Address.lpSockaddr, sizeof(tmpSocketAddress)); /* Flawfinder: ignore */ // NOLINT
                                 const unsigned long LOCAL_IP = tmpSocketAddress.sin_addr.s_addr;
                                 m_listOfLocalIPAddresses.insert(LOCAL_IP);
                             }
@@ -9283,9 +9536,9 @@ inline UDPReceiver::UDPReceiver(const std::string &receiveFromAddress,
             struct ifaddrs *interfaceAddress;
             if (0 == ::getifaddrs(&interfaceAddress)) {
                 for (struct ifaddrs *it = interfaceAddress; nullptr != it; it = it->ifa_next) {
-                    if ( (nullptr != it->ifa_addr) && (it->ifa_addr->sa_family == AF_INET) ) {
+                    if ((nullptr != it->ifa_addr) && (it->ifa_addr->sa_family == AF_INET)) {
                         if (0 == ::getnameinfo(it->ifa_addr, sizeof(struct sockaddr_in), nullptr, 0, nullptr, 0, NI_NUMERICHOST)) {
-                            std::memcpy(&tmpSocketAddress, it->ifa_addr, sizeof(tmpSocketAddress));
+                            std::memcpy(&tmpSocketAddress, it->ifa_addr, sizeof(tmpSocketAddress)); /* Flawfinder: ignore */ // NOLINT
                             const unsigned long LOCAL_IP = tmpSocketAddress.sin_addr.s_addr;
                             m_listOfLocalIPAddresses.insert(LOCAL_IP);
                         }
@@ -9307,11 +9560,13 @@ inline UDPReceiver::UDPReceiver(const std::string &receiveFromAddress,
             } catch (...) { closeSocket(ECHILD); } // LCOV_EXCL_LINE
 
             try {
-                m_pipelineThread = std::thread(&UDPReceiver::processPipeline, this);
-
-                // Let the operating system spawn the thread.
-                using namespace std::literals::chrono_literals; // NOLINT
-                do { std::this_thread::sleep_for(1ms); } while (!m_pipelineThreadRunning.load());
+                m_pipeline = std::make_shared<cluon::NotifyingPipeline<PipelineEntry>>(
+                    [this](PipelineEntry &&entry) { this->m_delegate(std::move(entry.m_data), std::move(entry.m_from), std::move(entry.m_sampleTime)); });
+                if (m_pipeline) {
+                    // Let the operating system spawn the thread.
+                    using namespace std::literals::chrono_literals; // NOLINT
+                    do { std::this_thread::sleep_for(1ms); } while (!m_pipeline->isRunning());
+                }
             } catch (...) { closeSocket(ECHILD); } // LCOV_EXCL_LINE
         }
     }
@@ -9329,19 +9584,7 @@ inline UDPReceiver::~UDPReceiver() noexcept {
         } catch (...) {} // LCOV_EXCL_LINE
     }
 
-    {
-        m_pipelineThreadRunning.store(false);
-
-        // Wake any waiting threads.
-        m_pipelineCondition.notify_all();
-
-        // Joining the thread could fail.
-        try {
-            if (m_pipelineThread.joinable()) {
-                m_pipelineThread.join();
-            }
-        } catch (...) {} // LCOV_EXCL_LINE
-    }
+    m_pipeline.reset();
 
     closeSocket(0);
 }
@@ -9380,46 +9623,6 @@ inline void UDPReceiver::closeSocket(int errorCode) noexcept {
 
 inline bool UDPReceiver::isRunning() const noexcept {
     return (m_readFromSocketThreadRunning.load() && !TerminateHandler::instance().isTerminated.load());
-}
-
-inline void UDPReceiver::processPipeline() noexcept {
-    // Indicate to main thread that we are ready.
-    m_pipelineThreadRunning.store(true);
-
-    while (m_pipelineThreadRunning.load()) {
-        std::unique_lock<std::mutex> lck(m_pipelineMutex);
-        // Wait until the thread should stop or data is available.
-        m_pipelineCondition.wait(lck, [this] { return (!this->m_pipelineThreadRunning.load() || !this->m_pipeline.empty()); });
-
-        // The condition will automatically lock the mutex after waking up.
-        // As we are locking per entry, we need to unlock the mutex first.
-        lck.unlock();
-
-        uint32_t entries{0};
-        {
-            lck.lock();
-            entries = static_cast<uint32_t>(m_pipeline.size());
-            lck.unlock();
-        }
-        for (uint32_t i{0}; i < entries; i++) {
-            PipelineEntry entry;
-            {
-                lck.lock();
-                entry = m_pipeline.front();
-                lck.unlock();
-            }
-
-            if (nullptr != m_delegate) {
-                m_delegate(std::move(entry.m_data), std::move(entry.m_from), std::move(entry.m_sampleTime));
-            }
-
-            {
-                lck.lock();
-                m_pipeline.pop_front();
-                lck.unlock();
-            }
-        }
-    }
 }
 
 inline void UDPReceiver::readFromSocket() noexcept {
@@ -9489,14 +9692,14 @@ inline void UDPReceiver::readFromSocket() noexcept {
                                 remoteAddress.data(),
                                 remoteAddress.max_size());
                     const unsigned long RECVFROM_IP{reinterpret_cast<struct sockaddr_in *>(&remote)->sin_addr.s_addr}; // NOLINT
-                    const uint16_t RECVFROM_PORT{ntohs(reinterpret_cast<struct sockaddr_in *>(&remote)->sin_port)}; // NOLINT
+                    const uint16_t RECVFROM_PORT{ntohs(reinterpret_cast<struct sockaddr_in *>(&remote)->sin_port)};    // NOLINT
 
                     // Check if the bytes actually came from us.
                     bool sentFromUs{false};
                     {
-                        auto pos = m_listOfLocalIPAddresses.find(RECVFROM_IP);
+                        auto pos                   = m_listOfLocalIPAddresses.find(RECVFROM_IP);
                         const bool sentFromLocalIP = (pos != m_listOfLocalIPAddresses.end() && (*pos == RECVFROM_IP));
-                        sentFromUs = sentFromLocalIP && (m_localSendFromPort == RECVFROM_PORT);
+                        sentFromUs                 = sentFromLocalIP && (m_localSendFromPort == RECVFROM_PORT);
                     }
 
                     // Create a pipeline entry to be processed concurrently.
@@ -9507,9 +9710,8 @@ inline void UDPReceiver::readFromSocket() noexcept {
                         pe.m_sampleTime = timestamp;
 
                         // Store entry in queue.
-                        {
-                            std::unique_lock<std::mutex> lck(m_pipelineMutex);
-                            m_pipeline.emplace_back(pe);
+                        if (m_pipeline) {
+                            m_pipeline->add(std::move(pe));
                         }
                     }
                     totalBytesRead += bytesRead;
@@ -9518,7 +9720,9 @@ inline void UDPReceiver::readFromSocket() noexcept {
         }
 
         if (static_cast<int32_t>(totalBytesRead) > 0) {
-            m_pipelineCondition.notify_all();
+            if (m_pipeline) {
+                m_pipeline->notifyAll();
+            }
         }
     }
 }
@@ -9567,13 +9771,20 @@ inline void UDPReceiver::readFromSocket() noexcept {
 
 namespace cluon {
 
+inline TCPConnection::TCPConnection(const int32_t &socket) noexcept
+    : m_socket(socket)
+    , m_newDataDelegate(nullptr)
+    , m_connectionLostDelegate(nullptr) {
+    if (!(m_socket < 0)) {
+        startReadingFromSocket();
+    }
+}
+
 inline TCPConnection::TCPConnection(const std::string &address,
                              uint16_t port,
                              std::function<void(std::string &&, std::chrono::system_clock::time_point &&)> newDataDelegate,
                              std::function<void()> connectionLostDelegate) noexcept
-    : m_address()
-    , m_readFromSocketThread()
-    , m_newDataDelegate(std::move(newDataDelegate))
+    : m_newDataDelegate(std::move(newDataDelegate))
     , m_connectionLostDelegate(std::move(connectionLostDelegate)) {
     // Decompose given address string to check validity with numerical IPv4 address.
     std::string tmp{address};
@@ -9611,21 +9822,14 @@ inline TCPConnection::TCPConnection(const std::string &address,
             if (!(m_socket < 0)) {
                 auto retVal = ::connect(m_socket, reinterpret_cast<struct sockaddr *>(&m_address), sizeof(m_address));
                 if (0 > retVal) {
-#ifdef WIN32
+#ifdef WIN32 // LCOV_EXCL_LINE
                     auto errorCode = WSAGetLastError();
 #else
-                    auto errorCode = errno;
-#endif
-                    closeSocket(errorCode);
+                    auto errorCode = errno;                                          // LCOV_EXCL_LINE
+#endif                                      // LCOV_EXCL_LINE
+                    closeSocket(errorCode); // LCOV_EXCL_LINE
                 } else {
-                    // Constructing a thread could fail.
-                    try {
-                        m_readFromSocketThread = std::thread(&TCPConnection::readFromSocket, this);
-
-                        // Let the operating system spawn the thread.
-                        using namespace std::literals::chrono_literals;
-                        do { std::this_thread::sleep_for(1ms); } while (!m_readFromSocketThreadRunning.load());
-                    } catch (...) { closeSocket(ECHILD); }
+                    startReadingFromSocket();
                 }
             }
         }
@@ -9633,26 +9837,30 @@ inline TCPConnection::TCPConnection(const std::string &address,
 }
 
 inline TCPConnection::~TCPConnection() noexcept {
-    m_readFromSocketThreadRunning.store(false);
+    {
+        m_readFromSocketThreadRunning.store(false);
 
-    // Joining the thread could fail.
-    try {
-        if (m_readFromSocketThread.joinable()) {
-            m_readFromSocketThread.join();
-        }
-    } catch (...) {}
+        // Joining the thread could fail.
+        try {
+            if (m_readFromSocketThread.joinable()) {
+                m_readFromSocketThread.join();
+            }
+        } catch (...) {} // LCOV_EXCL_LINE
+    }
+
+    m_pipeline.reset();
 
     closeSocket(0);
 }
 
 inline void TCPConnection::closeSocket(int errorCode) noexcept {
     if (0 != errorCode) {
-        std::cerr << "[cluon::TCPConnection] Failed to perform socket operation: ";
-#ifdef WIN32
+        std::cerr << "[cluon::TCPConnection] Failed to perform socket operation: "; // LCOV_EXCL_LINE
+#ifdef WIN32                                                                        // LCOV_EXCL_LINE
         std::cerr << errorCode << std::endl;
 #else
-        std::cerr << ::strerror(errorCode) << " (" << errorCode << ")" << std::endl;
-#endif
+        std::cerr << ::strerror(errorCode) << " (" << errorCode << ")" << std::endl; // LCOV_EXCL_LINE
+#endif // LCOV_EXCL_LINE
     }
 
     if (!(m_socket < 0)) {
@@ -9661,11 +9869,44 @@ inline void TCPConnection::closeSocket(int errorCode) noexcept {
         ::closesocket(m_socket);
         WSACleanup();
 #else
-        ::shutdown(m_socket, SHUT_RDWR); // Disallow further read/write operations.
+        ::shutdown(m_socket, SHUT_RDWR);                                             // Disallow further read/write operations.
         ::close(m_socket);
 #endif
     }
     m_socket = -1;
+}
+
+inline void TCPConnection::startReadingFromSocket() noexcept {
+    // Constructing a thread could fail.
+    try {
+        m_readFromSocketThread = std::thread(&TCPConnection::readFromSocket, this);
+
+        // Let the operating system spawn the thread.
+        using namespace std::literals::chrono_literals;
+        do { std::this_thread::sleep_for(1ms); } while (!m_readFromSocketThreadRunning.load());
+    } catch (...) {          // LCOV_EXCL_LINE
+        closeSocket(ECHILD); // LCOV_EXCL_LINE
+    }
+
+    try {
+        m_pipeline = std::make_shared<cluon::NotifyingPipeline<PipelineEntry>>(
+            [this](PipelineEntry &&entry) { this->m_newDataDelegate(std::move(entry.m_data), std::move(entry.m_sampleTime)); });
+        if (m_pipeline) {
+            // Let the operating system spawn the thread.
+            using namespace std::literals::chrono_literals; // NOLINT
+            do { std::this_thread::sleep_for(1ms); } while (!m_pipeline->isRunning());
+        }
+    } catch (...) { closeSocket(ECHILD); } // LCOV_EXCL_LINE
+}
+
+inline void TCPConnection::setOnNewData(std::function<void(std::string &&, std::chrono::system_clock::time_point &&)> newDataDelegate) noexcept {
+    std::lock_guard<std::mutex> lck(m_newDataDelegateMutex);
+    m_newDataDelegate = newDataDelegate;
+}
+
+inline void TCPConnection::setOnConnectionLost(std::function<void()> connectionLostDelegate) noexcept {
+    std::lock_guard<std::mutex> lck(m_connectionLostDelegateMutex);
+    m_connectionLostDelegate = connectionLostDelegate;
 }
 
 inline bool TCPConnection::isRunning() const noexcept {
@@ -9682,8 +9923,11 @@ inline std::pair<ssize_t, int32_t> TCPConnection::send(std::string &&data) const
     }
 
     if (!m_readFromSocketThreadRunning.load()) {
-        m_connectionLostDelegate();
-        return {-1, ENOTCONN};
+        std::lock_guard<std::mutex> lck(m_connectionLostDelegateMutex); // LCOV_EXCL_LINE
+        if (nullptr != m_connectionLostDelegate) {                      // LCOV_EXCL_LINE
+            m_connectionLostDelegate();                                 // LCOV_EXCL_LINE
+        }
+        return {-1, ENOTCONN}; // LCOV_EXCL_LINE
     }
 
     constexpr uint16_t MAX_LENGTH{65535};
@@ -9705,10 +9949,253 @@ inline void TCPConnection::readFromSocket() noexcept {
 
     // Define file descriptor set to watch for read operations.
     fd_set setOfFiledescriptorsToReadFrom{};
-    ssize_t bytesRead{0};
 
     // Indicate to main thread that we are ready.
     m_readFromSocketThreadRunning.store(true);
+
+    // This flag is used to not read data from the socket until this TCPConnection has a proper onNewDataHandler set.
+    bool hasNewDataDelegate{false};
+
+    while (m_readFromSocketThreadRunning.load()) {
+        // Define timeout for select system call. The timeval struct must be
+        // reinitialized for every select call as it might be modified containing
+        // the actual time slept.
+        timeout.tv_sec  = 0;
+        timeout.tv_usec = 20 * 1000; // Check for new data with 50Hz.
+
+        FD_ZERO(&setOfFiledescriptorsToReadFrom);
+        FD_SET(m_socket, &setOfFiledescriptorsToReadFrom);
+        ::select(m_socket + 1, &setOfFiledescriptorsToReadFrom, nullptr, nullptr, &timeout);
+
+        // Only read data when the newDataDelegate is set.
+        if (!hasNewDataDelegate) {
+            std::lock_guard<std::mutex> lck(m_newDataDelegateMutex);
+            hasNewDataDelegate = (nullptr != m_newDataDelegate);
+        }
+        if (FD_ISSET(m_socket, &setOfFiledescriptorsToReadFrom) && hasNewDataDelegate) {
+            ssize_t bytesRead = ::recv(m_socket, buffer.data(), buffer.max_size(), 0);
+            if (0 >= bytesRead) {
+                // 0 == bytesRead: peer shut down the connection; 0 > bytesRead: other error.
+                m_readFromSocketThreadRunning.store(false);
+
+                {
+                    std::lock_guard<std::mutex> lck(m_connectionLostDelegateMutex);
+                    if (nullptr != m_connectionLostDelegate) {
+                        m_connectionLostDelegate();
+                    }
+                }
+                break;
+            }
+
+            {
+                std::lock_guard<std::mutex> lck(m_newDataDelegateMutex);
+                if ((0 < bytesRead) && (nullptr != m_newDataDelegate)) {
+#ifdef __linux__
+                    std::chrono::system_clock::time_point timestamp;
+                    struct timeval receivedTimeStamp {};
+                    if (0 == ::ioctl(m_socket, SIOCGSTAMP, &receivedTimeStamp)) {
+                        // Transform struct timeval to C++ chrono.
+                        std::chrono::time_point<std::chrono::system_clock, std::chrono::microseconds> transformedTimePoint(
+                            std::chrono::microseconds(receivedTimeStamp.tv_sec * 1000000L + receivedTimeStamp.tv_usec));
+                        timestamp = std::chrono::time_point_cast<std::chrono::system_clock::duration>(transformedTimePoint);
+                    } else {
+                        // In case the ioctl failed, fall back to chrono.
+                        timestamp = std::chrono::system_clock::now();
+                    }
+#else
+                    std::chrono::system_clock::time_point timestamp = std::chrono::system_clock::now();
+#endif
+                    {
+                        PipelineEntry pe;
+                        pe.m_data       = std::string(buffer.data(), static_cast<size_t>(bytesRead));
+                        pe.m_sampleTime = timestamp;
+
+                        // Store entry in queue.
+                        if (m_pipeline) {
+                            m_pipeline->add(std::move(pe));
+                        }
+                    }
+
+                    if (m_pipeline) {
+                        m_pipeline->notifyAll();
+                    }
+                }
+            }
+        }
+    }
+}
+} // namespace cluon
+/*
+ * Copyright (C) 2018  Christian Berger
+ *
+ * This program is free software: you can redistribute it and/or modify
+ * it under the terms of the GNU General Public License as published by
+ * the Free Software Foundation, either version 3 of the License, or
+ * (at your option) any later version.
+ *
+ * This program is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * GNU General Public License for more details.
+ *
+ * You should have received a copy of the GNU General Public License
+ * along with this program.  If not, see <http://www.gnu.org/licenses/>.
+ */
+
+//#include "cluon/TCPServer.hpp"
+//#include "cluon/TerminateHandler.hpp"
+
+// clang-format off
+#ifdef WIN32
+    #include <errno.h>
+    #include <iostream>
+#else
+    #include <arpa/inet.h>
+    #include <sys/ioctl.h>
+    #include <sys/socket.h>
+    #include <sys/types.h>
+    #include <unistd.h>
+#endif
+// clang-format on
+
+#include <cstring>
+#include <array>
+#include <iostream>
+#include <memory>
+#include <sstream>
+
+namespace cluon {
+
+inline TCPServer::TCPServer(uint16_t port, std::function<void(std::string &&from, std::shared_ptr<cluon::TCPConnection> connection)> newConnectionDelegate) noexcept
+    : m_newConnectionDelegate(newConnectionDelegate) {
+    if (0 < port) {
+#ifdef WIN32
+        // Load Winsock 2.2 DLL.
+        WSADATA wsaData;
+        if (WSAStartup(MAKEWORD(2, 2), &wsaData) != 0) {
+            std::cerr << "[cluon::TCPServer] Error while calling WSAStartUp: " << WSAGetLastError() << std::endl;
+        }
+#endif
+        m_socket = ::socket(AF_INET, SOCK_STREAM, IPPROTO_TCP);
+
+#ifdef WIN32
+        if (m_socket < 0) {
+            std::cerr << "[cluon::TCPServer] Error while creating socket: " << WSAGetLastError() << std::endl;
+            WSACleanup();
+        }
+#endif
+
+        if (!(m_socket < 0)) {
+            // Allow reusing of ports by multiple calls with same address/port.
+            uint32_t YES = 1;
+            // clang-format off
+            auto retVal = ::setsockopt(m_socket, SOL_SOCKET, SO_REUSEADDR, reinterpret_cast<char *>(&YES), sizeof(YES)); // NOLINT
+            // clang-format on
+            if (0 > retVal) {
+#ifdef WIN32 // LCOV_EXCL_LINE
+                auto errorCode = WSAGetLastError();
+#else
+                auto errorCode = errno;                                              // LCOV_EXCL_LINE
+#endif                                  // LCOV_EXCL_LINE
+                closeSocket(errorCode); // LCOV_EXCL_LINE
+            }
+        }
+
+        if (!(m_socket < 0)) {
+            // Setup address and port.
+            struct sockaddr_in address;
+            ::memset(&address, 0, sizeof(address));
+            address.sin_family      = AF_INET;
+            address.sin_addr.s_addr = htonl(INADDR_ANY);
+            address.sin_port        = htons(port);
+
+            auto retVal = ::bind(m_socket, reinterpret_cast<struct sockaddr *>(&address), sizeof(address));
+            if (-1 != retVal) {
+                constexpr int32_t MAX_PENDING_CONNECTIONS{100};
+                retVal = ::listen(m_socket, MAX_PENDING_CONNECTIONS);
+                if (-1 != retVal) {
+                    // Constructing a thread could fail.
+                    try {
+                        m_readFromSocketThread = std::thread(&TCPServer::readFromSocket, this);
+
+                        // Let the operating system spawn the thread.
+                        using namespace std::literals::chrono_literals;
+                        do { std::this_thread::sleep_for(1ms); } while (!m_readFromSocketThreadRunning.load());
+                    } catch (...) {          // LCOV_EXCL_LINE
+                        closeSocket(ECHILD); // LCOV_EXCL_LINE
+                    }
+                } else { // LCOV_EXCL_LINE
+#ifdef WIN32             // LCOV_EXCL_LINE
+                    auto errorCode = WSAGetLastError();
+#else
+                    auto errorCode = errno;                                          // LCOV_EXCL_LINE
+#endif                                      // LCOV_EXCL_LINE
+                    closeSocket(errorCode); // LCOV_EXCL_LINE
+                }
+            } else { // LCOV_EXCL_LINE
+#ifdef WIN32         // LCOV_EXCL_LINE
+                auto errorCode = WSAGetLastError();
+#else
+                auto errorCode = errno;                                              // LCOV_EXCL_LINE
+#endif                                  // LCOV_EXCL_LINE
+                closeSocket(errorCode); // LCOV_EXCL_LINE
+            }
+        }
+    }
+}
+
+inline TCPServer::~TCPServer() noexcept {
+    m_readFromSocketThreadRunning.store(false);
+
+    // Joining the thread could fail.
+    try {
+        if (m_readFromSocketThread.joinable()) {
+            m_readFromSocketThread.join();
+        }
+    } catch (...) { // LCOV_EXCL_LINE
+    }
+
+    closeSocket(0);
+}
+
+inline void TCPServer::closeSocket(int errorCode) noexcept {
+    if (0 != errorCode) {
+        std::cerr << "[cluon::TCPServer] Failed to perform socket operation: "; // LCOV_EXCL_LINE
+#ifdef WIN32                                                                    // LCOV_EXCL_LINE
+        std::cerr << errorCode << std::endl;
+#else
+        std::cerr << ::strerror(errorCode) << " (" << errorCode << ")" << std::endl; // LCOV_EXCL_LINE
+#endif // LCOV_EXCL_LINE
+    }
+
+    if (!(m_socket < 0)) {
+#ifdef WIN32
+        ::shutdown(m_socket, SD_BOTH);
+        ::closesocket(m_socket);
+        WSACleanup();
+#else
+        ::shutdown(m_socket, SHUT_RDWR);                                             // Disallow further read/write operations.
+        ::close(m_socket);
+#endif
+    }
+    m_socket = -1;
+}
+
+inline bool TCPServer::isRunning() const noexcept {
+    return (m_readFromSocketThreadRunning.load() && !TerminateHandler::instance().isTerminated.load());
+}
+
+inline void TCPServer::readFromSocket() noexcept {
+    struct timeval timeout {};
+
+    // Define file descriptor set to watch for read operations.
+    fd_set setOfFiledescriptorsToReadFrom{};
+
+    // Indicate to main thread that we are ready.
+    m_readFromSocketThreadRunning.store(true);
+
+    constexpr uint16_t MAX_ADDR_SIZE{1024};
+    std::array<char, MAX_ADDR_SIZE> remoteAddress{};
 
     while (m_readFromSocketThreadRunning.load()) {
         // Define timeout for select system call. The timeval struct must be
@@ -9721,33 +10208,17 @@ inline void TCPConnection::readFromSocket() noexcept {
         FD_SET(m_socket, &setOfFiledescriptorsToReadFrom);
         ::select(m_socket + 1, &setOfFiledescriptorsToReadFrom, nullptr, nullptr, &timeout);
         if (FD_ISSET(m_socket, &setOfFiledescriptorsToReadFrom)) {
-            bytesRead = ::recv(m_socket, buffer.data(), buffer.max_size(), 0);
-            if (0 >= bytesRead) {
-                // 0 == bytesRead: peer shut down the connection; 0 > bytesRead: other error.
-                m_readFromSocketThreadRunning.store(false);
-                if (nullptr != m_connectionLostDelegate) {
-                    m_connectionLostDelegate();
-                }
-                break;
-            }
-            if ((0 < bytesRead) && (nullptr != m_newDataDelegate)) {
-#ifdef __linux__
-                std::chrono::system_clock::time_point timestamp;
-                struct timeval receivedTimeStamp {};
-                if (0 == ::ioctl(m_socket, SIOCGSTAMP, &receivedTimeStamp)) {
-                    // Transform struct timeval to C++ chrono.
-                    std::chrono::time_point<std::chrono::system_clock, std::chrono::microseconds> transformedTimePoint(
-                        std::chrono::microseconds(receivedTimeStamp.tv_sec * 1000000L + receivedTimeStamp.tv_usec));
-                    timestamp = std::chrono::time_point_cast<std::chrono::system_clock::duration>(transformedTimePoint);
-                } else {
-                    // In case the ioctl failed, fall back to chrono.
-                    timestamp = std::chrono::system_clock::now();
-                }
-#else
-                std::chrono::system_clock::time_point timestamp = std::chrono::system_clock::now();
-#endif
-                // Call newDataDelegate.
-                m_newDataDelegate(std::string(buffer.data(), static_cast<size_t>(bytesRead)), timestamp);
+            struct sockaddr_storage remote;
+            socklen_t addrLength     = sizeof(remote);
+            int32_t connectingClient = ::accept(m_socket, reinterpret_cast<struct sockaddr *>(&remote), &addrLength);
+            if ((0 <= connectingClient) && (nullptr != m_newConnectionDelegate)) {
+                ::inet_ntop(remote.ss_family,
+                            &((reinterpret_cast<struct sockaddr_in *>(&remote))->sin_addr), // NOLINT
+                            remoteAddress.data(),
+                            remoteAddress.max_size());
+                const uint16_t RECVFROM_PORT{ntohs(reinterpret_cast<struct sockaddr_in *>(&remote)->sin_port)}; // NOLINT
+                m_newConnectionDelegate(std::string(remoteAddress.data()) + ':' + std::to_string(RECVFROM_PORT),
+                                        std::shared_ptr<cluon::TCPConnection>(new cluon::TCPConnection(connectingClient)));
             }
         }
     }
@@ -11904,26 +12375,26 @@ inline std::string ToJSONVisitor::encodeBase64(const std::string &input) const n
     uint32_t value{0};
 
     while (length > 2) {
-        value = static_cast<uint32_t>(input.at(index++)) << 16;
-        value |= static_cast<uint32_t>(input.at(index++)) << 8;
-        value |= static_cast<uint32_t>(input.at(index++));
-        retVal += ALPHABET.at((value >> 18) & 63);
-        retVal += ALPHABET.at((value >> 12) & 63);
-        retVal += ALPHABET.at((value >> 6) & 63);
-        retVal += ALPHABET.at(value & 63);
+        value = static_cast<uint32_t>(static_cast<unsigned char>(input.at(index++))) << 16;
+        value |= static_cast<uint32_t>(static_cast<unsigned char>(input.at(index++))) << 8;
+        value |= static_cast<uint32_t>(static_cast<unsigned char>(input.at(index++)));
+        retVal += ALPHABET.at((value & 0xFC0000) >> 18);
+        retVal += ALPHABET.at((value & 0x3F000) >> 12);
+        retVal += ALPHABET.at((value & 0xFC0) >> 6);
+        retVal += ALPHABET.at(value & 0x3F);
         length -= 3;
     }
     if (length == 2) {
-        value = static_cast<uint32_t>(input.at(index++)) << 16;
-        value |= static_cast<uint32_t>(input.at(index++)) << 8;
-        retVal += ALPHABET.at((value >> 18) & 63);
-        retVal += ALPHABET.at((value >> 12) & 63);
-        retVal += ALPHABET.at((value >> 6) & 63);
+        value = static_cast<uint32_t>(static_cast<unsigned char>(input.at(index++))) << 16;
+        value |= static_cast<uint32_t>(static_cast<unsigned char>(input.at(index++))) << 8;
+        retVal += ALPHABET.at((value & 0xFC0000) >> 18);
+        retVal += ALPHABET.at((value & 0x3F000) >> 12);
+        retVal += ALPHABET.at((value & 0xFC0) >> 6);
         retVal += "=";
     } else if (length == 1) {
-        value = static_cast<uint32_t>(input.at(index++)) << 16;
-        retVal += ALPHABET.at((value >> 18) & 63);
-        retVal += ALPHABET.at((value >> 12) & 63);
+        value = static_cast<uint32_t>(static_cast<unsigned char>(input.at(index++))) << 16;
+        retVal += ALPHABET.at((value & 0xFC0000) >> 18);
+        retVal += ALPHABET.at((value & 0x3F000) >> 12);
         retVal += "==";
     }
 
@@ -12770,9 +13241,12 @@ inline OD4Session::OD4Session(uint16_t CID, std::function<void(cluon::data::Enve
     , m_mapOfDataTriggeredDelegatesMutex{}
     , m_mapOfDataTriggeredDelegates{} {
     m_receiver = std::make_unique<cluon::UDPReceiver>(
-        "225.0.0." + std::to_string(CID), 12175, [this](std::string &&data, std::string &&from, std::chrono::system_clock::time_point &&timepoint) {
+        "225.0.0." + std::to_string(CID),
+        12175,
+        [this](std::string &&data, std::string &&from, std::chrono::system_clock::time_point &&timepoint) {
             this->callback(std::move(data), std::move(from), std::move(timepoint));
-        }, m_sender.getSendFromPort() /* passing our local send from port to the UDPReceiver to filter out our own bytes */);
+        },
+        m_sender.getSendFromPort() /* passing our local send from port to the UDPReceiver to filter out our own bytes */);
 }
 
 inline void OD4Session::timeTrigger(float freq, std::function<bool()> delegate) noexcept {
@@ -12824,24 +13298,34 @@ inline bool OD4Session::dataTrigger(int32_t messageIdentifier, std::function<voi
 }
 
 inline void OD4Session::callback(std::string &&data, std::string && /*from*/, std::chrono::system_clock::time_point &&timepoint) noexcept {
-    std::stringstream sstr(data);
-    auto retVal = extractEnvelope(sstr);
+    size_t numberOfDataTriggeredDelegates{0};
+    {
+        try {
+            std::lock_guard<std::mutex> lck{m_mapOfDataTriggeredDelegatesMutex};
+            numberOfDataTriggeredDelegates = m_mapOfDataTriggeredDelegates.size();
+        } catch (...) {} // LCOV_EXCL_LINE
+    }
+    // Only unpack the envelope when it needs to be post-processed.
+    if ((nullptr != m_delegate) || (0 < numberOfDataTriggeredDelegates)) {
+        std::stringstream sstr(data);
+        auto retVal = extractEnvelope(sstr);
 
-    if (retVal.first) {
-        cluon::data::Envelope env{retVal.second};
-        env.received(cluon::time::convert(timepoint));
+        if (retVal.first) {
+            cluon::data::Envelope env{retVal.second};
+            env.received(cluon::time::convert(timepoint));
 
-        // "Catch all"-delegate.
-        if (nullptr != m_delegate) {
-            m_delegate(std::move(env));
-        } else {
-            try {
-                // Data triggered-delegates.
-                std::lock_guard<std::mutex> lck{m_mapOfDataTriggeredDelegatesMutex};
-                if (m_mapOfDataTriggeredDelegates.count(env.dataType()) > 0) {
-                    m_mapOfDataTriggeredDelegates[env.dataType()](std::move(env));
-                }
-            } catch (...) {} // LCOV_EXCL_LINE
+            // "Catch all"-delegate.
+            if (nullptr != m_delegate) {
+                m_delegate(std::move(env));
+            } else {
+                try {
+                    // Data triggered-delegates.
+                    std::lock_guard<std::mutex> lck{m_mapOfDataTriggeredDelegatesMutex};
+                    if (m_mapOfDataTriggeredDelegates.count(env.dataType()) > 0) {
+                        m_mapOfDataTriggeredDelegates[env.dataType()](std::move(env));
+                    }
+                } catch (...) {} // LCOV_EXCL_LINE
+            }
         }
     }
 }
@@ -13123,7 +13607,9 @@ inline std::string EnvelopeConverter::getJSONFromEnvelope(cluon::data::Envelope 
             std::string tmp{payload.messageName()};
             std::replace(tmp.begin(), tmp.end(), '.', '_');
 
-            retVal = '{' + envelopeToJSON.json() + ',' + '\n' + '"' + tmp + '"' + ':' + '{' + payloadToJSON.json() + '}' + '}';
+            const std::string strPayloadJSON{payloadToJSON.json() != "{}" ? payloadToJSON.json() : ""};
+
+            retVal = '{' + envelopeToJSON.json() + ',' + '\n' + '"' + tmp + '"' + ':' + '{' + strPayloadJSON + '}' + '}';
         }
     }
     return retVal;
@@ -13179,16 +13665,14 @@ inline std::string EnvelopeConverter::getProtoEncodedEnvelopeFromJSONWithoutTime
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
 
-// clang-format off
-
-//#include "cluon/Envelope.hpp"
 //#include "cluon/Player.hpp"
+//#include "cluon/Envelope.hpp"
 //#include "cluon/Time.hpp"
 
+#include <algorithm>
 #include <chrono>
 #include <cmath>
 #include <cstdio>
-#include <algorithm>
 #include <fstream>
 #include <iostream>
 #include <limits>
@@ -13197,35 +13681,35 @@ inline std::string EnvelopeConverter::getProtoEncodedEnvelopeFromJSONWithoutTime
 
 namespace cluon {
 
-inline IndexEntry::IndexEntry(const int64_t &sampleTimeStamp, const uint64_t &filePosition) noexcept :
-    m_sampleTimeStamp(sampleTimeStamp),
-    m_filePosition(filePosition),
-    m_available(false) {}
+inline IndexEntry::IndexEntry(const int64_t &sampleTimeStamp, const uint64_t &filePosition) noexcept
+    : m_sampleTimeStamp(sampleTimeStamp)
+    , m_filePosition(filePosition)
+    , m_available(false) {}
 
 ////////////////////////////////////////////////////////////////////////
 
-inline Player::Player(const std::string &file, const bool &autoRewind, const bool &threading) noexcept :
-    m_threading(threading),
-    m_file(file),
-    m_recFile(),
-    m_recFileValid(false),
-    m_autoRewind(autoRewind),
-    m_indexMutex(),
-    m_index(),
-    m_previousPreviousEnvelopeAlreadyReplayed(m_index.end()),
-    m_previousEnvelopeAlreadyReplayed(m_index.begin()),
-    m_currentEnvelopeToReplay(m_index.begin()),
-    m_nextEntryToReadFromRecFile(m_index.begin()),
-    m_desiredInitialLevel(0),
-    m_firstTimePointReturningAEnvelope(),
-    m_numberOfReturnedEnvelopesInTotal(0),
-    m_delay(0),
-    m_envelopeCacheFillingThreadIsRunningMutex(),
-    m_envelopeCacheFillingThreadIsRunning(false),
-    m_envelopeCacheFillingThread(),
-    m_envelopeCache(),
-    m_playerListenerMutex(),
-    m_playerListener(nullptr) {
+inline Player::Player(const std::string &file, const bool &autoRewind, const bool &threading) noexcept
+    : m_threading(threading)
+    , m_file(file)
+    , m_recFile()
+    , m_recFileValid(false)
+    , m_autoRewind(autoRewind)
+    , m_indexMutex()
+    , m_index()
+    , m_previousPreviousEnvelopeAlreadyReplayed(m_index.end())
+    , m_previousEnvelopeAlreadyReplayed(m_index.begin())
+    , m_currentEnvelopeToReplay(m_index.begin())
+    , m_nextEntryToReadFromRecFile(m_index.begin())
+    , m_desiredInitialLevel(0)
+    , m_firstTimePointReturningAEnvelope()
+    , m_numberOfReturnedEnvelopesInTotal(0)
+    , m_delay(0)
+    , m_envelopeCacheFillingThreadIsRunningMutex()
+    , m_envelopeCacheFillingThreadIsRunning(false)
+    , m_envelopeCacheFillingThread()
+    , m_envelopeCache()
+    , m_playerListenerMutex()
+    , m_playerListener(nullptr) {
     initializeIndex();
     computeInitialCacheLevelAndFillCache();
 
@@ -13256,13 +13740,13 @@ inline void Player::setPlayerListener(std::function<void(cluon::data::PlayerStat
 ////////////////////////////////////////////////////////////////////////
 
 inline void Player::initializeIndex() noexcept {
-    m_recFile.open(m_file.c_str(), std::ios_base::in|std::ios_base::binary);
+    m_recFile.open(m_file.c_str(), std::ios_base::in | std::ios_base::binary); /* Flawfinder: ignore */
     m_recFileValid = m_recFile.good();
 
     if (m_recFileValid) {
         // Determine file size to display progress.
         m_recFile.seekg(0, m_recFile.end);
-            int64_t fileLength = m_recFile.tellg();
+        int64_t fileLength = m_recFile.tellg();
         m_recFile.seekg(0, m_recFile.beg);
 
         // Read complete file and store file positions to envelopes to create
@@ -13273,8 +13757,8 @@ inline void Player::initializeIndex() noexcept {
             int32_t oldPercentage = -1;
             while (m_recFile.good()) {
                 const uint64_t POS_BEFORE = static_cast<uint64_t>(m_recFile.tellg());
-                    auto retVal = extractEnvelope(m_recFile);
-                const uint64_t POS_AFTER = static_cast<uint64_t>(m_recFile.tellg());
+                auto retVal               = extractEnvelope(m_recFile);
+                const uint64_t POS_AFTER  = static_cast<uint64_t>(m_recFile.tellg());
 
                 if (!m_recFile.eof() && retVal.first) {
                     totalBytesRead += (POS_AFTER - POS_BEFORE);
@@ -13283,8 +13767,8 @@ inline void Player::initializeIndex() noexcept {
                     const int64_t microseconds = cluon::time::toMicroseconds(retVal.second.sampleTimeStamp());
                     m_index.emplace(std::make_pair(microseconds, IndexEntry(microseconds, POS_BEFORE)));
 
-                    const int32_t percentage = static_cast<int32_t>((static_cast<float>(m_recFile.tellg())*100.0f)/static_cast<float>(fileLength));
-                    if ( (percentage % 5 == 0) && (percentage != oldPercentage) ) {
+                    const int32_t percentage = static_cast<int32_t>((static_cast<float>(m_recFile.tellg()) * 100.0f) / static_cast<float>(fileLength));
+                    if ((percentage % 5 == 0) && (percentage != oldPercentage)) {
                         std::clog << "[cluon::Player]: Indexed " << percentage << "% from " << m_file << "." << std::endl;
                         oldPercentage = percentage;
                     }
@@ -13293,12 +13777,10 @@ inline void Player::initializeIndex() noexcept {
         }
         const cluon::data::TimeStamp AFTER{cluon::time::now()};
 
-        std::clog << "[cluon::Player]: " << m_file
-                                         << " contains " << m_index.size() << " entries; "
-                                         << "read " << totalBytesRead << " bytes "
-                                         << "in " << cluon::time::deltaInMicroseconds(AFTER, BEFORE)/static_cast<int64_t>(1000*1000) << "s." << std::endl;
-    }
-    else {
+        std::clog << "[cluon::Player]: " << m_file << " contains " << m_index.size() << " entries; "
+                  << "read " << totalBytesRead << " bytes "
+                  << "in " << cluon::time::deltaInMicroseconds(AFTER, BEFORE) / static_cast<int64_t>(1000 * 1000) << "s." << std::endl;
+    } else {
         std::clog << "[cluon::Player]: " << m_file << " could not be opened." << std::endl;
     }
 }
@@ -13306,39 +13788,35 @@ inline void Player::initializeIndex() noexcept {
 inline void Player::resetCaches() noexcept {
     try {
         std::lock_guard<std::mutex> lck(m_indexMutex);
-        m_delay = 0;
+        m_delay                            = 0;
         m_numberOfReturnedEnvelopesInTotal = 0;
         m_envelopeCache.clear();
-    }
-    catch (...) {} // LCOV_EXCL_LINE
+    } catch (...) {} // LCOV_EXCL_LINE
 }
 
 inline void Player::resetIterators() noexcept {
     try {
         std::lock_guard<std::mutex> lck(m_indexMutex);
         // Point to first entry in index.
-        m_nextEntryToReadFromRecFile
-            = m_previousEnvelopeAlreadyReplayed
-            = m_currentEnvelopeToReplay
-            = m_index.begin();
+        m_nextEntryToReadFromRecFile = m_previousEnvelopeAlreadyReplayed = m_currentEnvelopeToReplay = m_index.begin();
         // Invalidate iterator for erasing entries point.
         m_previousPreviousEnvelopeAlreadyReplayed = m_index.end();
-    }
-    catch (...) {} // LCOV_EXCL_LINE
+    } catch (...) {} // LCOV_EXCL_LINE
 }
 
 inline void Player::computeInitialCacheLevelAndFillCache() noexcept {
-    if (m_recFileValid && (m_index.size() > 0) ) {
+    if (m_recFileValid && (m_index.size() > 0)) {
         int64_t smallestSampleTimePoint = std::numeric_limits<int64_t>::max();
-        int64_t largestSampleTimePoint = std::numeric_limits<int64_t>::min();
+        int64_t largestSampleTimePoint  = std::numeric_limits<int64_t>::min();
         for (auto it = m_index.begin(); it != m_index.end(); it++) {
             smallestSampleTimePoint = std::min(smallestSampleTimePoint, it->first);
-            largestSampleTimePoint = std::max(largestSampleTimePoint, it->first);
+            largestSampleTimePoint  = std::max(largestSampleTimePoint, it->first);
         }
 
-        const uint32_t ENTRIES_TO_READ_PER_SECOND_FOR_REALTIME_REPLAY = static_cast<uint32_t>(std::ceil(static_cast<float>(m_index.size())*(static_cast<float>(Player::ONE_SECOND_IN_MICROSECONDS))/static_cast<float>(largestSampleTimePoint - smallestSampleTimePoint)));
-        m_desiredInitialLevel = std::max<uint32_t>(ENTRIES_TO_READ_PER_SECOND_FOR_REALTIME_REPLAY * Player::LOOK_AHEAD_IN_S,
-                                                   MIN_ENTRIES_FOR_LOOK_AHEAD);
+        const uint32_t ENTRIES_TO_READ_PER_SECOND_FOR_REALTIME_REPLAY
+            = static_cast<uint32_t>(std::ceil(static_cast<float>(m_index.size()) * (static_cast<float>(Player::ONE_SECOND_IN_MICROSECONDS))
+                                              / static_cast<float>(largestSampleTimePoint - smallestSampleTimePoint)));
+        m_desiredInitialLevel = std::max<uint32_t>(ENTRIES_TO_READ_PER_SECOND_FOR_REALTIME_REPLAY * Player::LOOK_AHEAD_IN_S, MIN_ENTRIES_FOR_LOOK_AHEAD);
 
         std::clog << "[cluon::Player]: Initializing cache with " << m_desiredInitialLevel << " entries." << std::endl;
 
@@ -13354,8 +13832,7 @@ inline uint32_t Player::fillEnvelopeCache(const uint32_t &maxNumberOfEntriesToRe
         // Reset any fstream's error states.
         m_recFile.clear();
 
-        while ( (m_nextEntryToReadFromRecFile != m_index.end())
-             && (entriesReadFromFile < maxNumberOfEntriesToReadFromFile) ) {
+        while ((m_nextEntryToReadFromRecFile != m_index.end()) && (entriesReadFromFile < maxNumberOfEntriesToReadFromFile)) {
             // Move to corresponding position in the .rec file.
             m_recFile.seekg(static_cast<std::streamoff>(m_nextEntryToReadFromRecFile->second.m_filePosition));
 
@@ -13365,9 +13842,9 @@ inline uint32_t Player::fillEnvelopeCache(const uint32_t &maxNumberOfEntriesToRe
                 // Store the envelope in the envelope cache.
                 try {
                     std::lock_guard<std::mutex> lck(m_indexMutex);
-                    m_nextEntryToReadFromRecFile->second.m_available = m_envelopeCache.emplace(std::make_pair(m_nextEntryToReadFromRecFile->second.m_filePosition, retVal.second)).second;
-                }
-                catch (...) {} // LCOV_EXCL_LINE
+                    m_nextEntryToReadFromRecFile->second.m_available
+                        = m_envelopeCache.emplace(std::make_pair(m_nextEntryToReadFromRecFile->second.m_filePosition, retVal.second)).second;
+                } catch (...) {} // LCOV_EXCL_LINE
 
                 m_nextEntryToReadFromRecFile++;
                 entriesReadFromFile++;
@@ -13386,8 +13863,7 @@ inline std::pair<bool, cluon::data::Envelope> Player::getNextEnvelopeToBeReplaye
     if (m_currentEnvelopeToReplay == m_index.end()) {
         if (!m_autoRewind) {
             return std::make_pair(hasEnvelopeToReturn, envelopeToReturn);
-        }
-        else {
+        } else {
             rewind();
         }
     }
@@ -13400,7 +13876,7 @@ inline std::pair<bool, cluon::data::Envelope> Player::getNextEnvelopeToBeReplaye
                 std::lock_guard<std::mutex> lck(m_indexMutex);
 
                 cluon::data::Envelope &nextEnvelope = m_envelopeCache[m_currentEnvelopeToReplay->second.m_filePosition];
-                envelopeToReturn = nextEnvelope;
+                envelopeToReturn                    = nextEnvelope;
 
                 m_delay = static_cast<uint32_t>(m_currentEnvelopeToReplay->first - m_previousEnvelopeAlreadyReplayed->first);
 
@@ -13413,7 +13889,7 @@ inline std::pair<bool, cluon::data::Envelope> Player::getNextEnvelopeToBeReplaye
                 }
 
                 m_previousPreviousEnvelopeAlreadyReplayed = m_previousEnvelopeAlreadyReplayed;
-                m_previousEnvelopeAlreadyReplayed = m_currentEnvelopeToReplay++;
+                m_previousEnvelopeAlreadyReplayed         = m_currentEnvelopeToReplay++;
 
                 m_numberOfReturnedEnvelopesInTotal++;
             }
@@ -13427,8 +13903,7 @@ inline std::pair<bool, cluon::data::Envelope> Player::getNextEnvelopeToBeReplaye
 
             // Store sample time stamp as int64 to avoid unnecessary copying of Envelopes.
             hasEnvelopeToReturn = true;
-        }
-        catch (...) {} // LCOV_EXCL_LINE
+        } catch (...) {} // LCOV_EXCL_LINE
     }
     return std::make_pair(hasEnvelopeToReturn, envelopeToReturn);
 }
@@ -13440,15 +13915,13 @@ inline void Player::checkAvailabilityOfNextEnvelopeToBeReplayed() noexcept {
             try {
                 std::lock_guard<std::mutex> lck(m_indexMutex);
                 numberOfEntries = m_envelopeCache.size();
-            }
-            catch (...) {} // LCOV_EXCL_LINE
+            } catch (...) {} // LCOV_EXCL_LINE
         }
         if (0 == numberOfEntries) {
             using namespace std::chrono_literals; // LCOV_EXCL_LINE
             std::this_thread::sleep_for(10ms);    // LCOV_EXCL_LINE
         }
-    }
-    while (0 == numberOfEntries);
+    } while (0 == numberOfEntries);
 }
 
 ////////////////////////////////////////////////////////////////////////
@@ -13499,27 +13972,26 @@ inline void Player::seekTo(float ratio) noexcept {
         try {
             std::lock_guard<std::mutex> lck(m_indexMutex);
             numberOfEntriesInIndex = static_cast<uint32_t>(m_index.size());
-        }
-        catch (...) {} // LCOV_EXCL_LINE
+        } catch (...) {} // LCOV_EXCL_LINE
 
         // Fast forward.
         m_numberOfReturnedEnvelopesInTotal = 0;
-        std::clog << "[cluon::Player]: Seeking to " << static_cast<float>(numberOfEntriesInIndex)*ratio << "/" << numberOfEntriesInIndex << std::endl;
+        std::clog << "[cluon::Player]: Seeking to " << static_cast<float>(numberOfEntriesInIndex) * ratio << "/" << numberOfEntriesInIndex << std::endl;
         if (0 < ratio) {
-            for (m_numberOfReturnedEnvelopesInTotal = 0; m_numberOfReturnedEnvelopesInTotal < static_cast<uint32_t>(static_cast<float>(numberOfEntriesInIndex)*ratio)-1; m_numberOfReturnedEnvelopesInTotal++) {
+            for (m_numberOfReturnedEnvelopesInTotal = 0;
+                 m_numberOfReturnedEnvelopesInTotal < static_cast<uint32_t>(static_cast<float>(numberOfEntriesInIndex) * ratio) - 1;
+                 m_numberOfReturnedEnvelopesInTotal++) {
                 m_currentEnvelopeToReplay++;
             }
         }
-        m_nextEntryToReadFromRecFile
-            = m_previousEnvelopeAlreadyReplayed
-            = m_currentEnvelopeToReplay;
+        m_nextEntryToReadFromRecFile = m_previousEnvelopeAlreadyReplayed = m_currentEnvelopeToReplay;
 
         // Refill cache.
         m_envelopeCache.clear();
-        fillEnvelopeCache(static_cast<uint32_t>(static_cast<float>(m_desiredInitialLevel)*.3f));
+        fillEnvelopeCache(static_cast<uint32_t>(static_cast<float>(m_desiredInitialLevel) * .3f));
 
         // Correct iterators if not at the beginning.
-        if ( (0 < ratio) && (ratio < 1) ) {
+        if ((0 < ratio) && (ratio < 1)) {
             getNextEnvelopeToBeReplayed();
         }
         std::clog << "[cluon::Player]: Seeking done." << std::endl;
@@ -13560,14 +14032,13 @@ inline bool Player::isEnvelopeCacheFillingRunning() const noexcept {
 inline void Player::manageCache() noexcept {
     uint8_t statisticsCounter = 0;
     float refillMultiplicator = 1.1f;
-    uint32_t numberOfEntries = 0;
+    uint32_t numberOfEntries  = 0;
 
     while (isEnvelopeCacheFillingRunning()) {
         try {
             std::lock_guard<std::mutex> lck(m_indexMutex);
             numberOfEntries = static_cast<uint32_t>(m_envelopeCache.size());
-        }
-        catch (...) {} // LCOV_EXCL_LINE
+        } catch (...) {} // LCOV_EXCL_LINE
 
         // Check if refilling of the cache is needed.
         refillMultiplicator = checkRefillingCache(numberOfEntries, refillMultiplicator);
@@ -13578,16 +14049,15 @@ inline void Player::manageCache() noexcept {
         std::this_thread::sleep_for(100ms);
 
         // Publish some statistics at 1 Hz.
-        if ( 0 == ((++statisticsCounter) % 10) ) {
+        if (0 == ((++statisticsCounter) % 10)) {
             uint64_t numberOfReturnedEnvelopesInTotal = 0;
-            uint32_t totalNumberOfEnvelopes = 0;
+            uint32_t totalNumberOfEnvelopes           = 0;
             try {
                 // m_numberOfReturnedEnvelopesInTotal is modified in a different thread.
                 std::lock_guard<std::mutex> lck(m_indexMutex);
                 numberOfReturnedEnvelopesInTotal = m_numberOfReturnedEnvelopesInTotal;
-                totalNumberOfEnvelopes = static_cast<uint32_t>(m_index.size());
-            }
-            catch (...) {} // LCOV_EXCL_LINE
+                totalNumberOfEnvelopes           = static_cast<uint32_t>(m_index.size());
+            } catch (...) {} // LCOV_EXCL_LINE
 
             try {
                 std::lock_guard<std::mutex> lck(m_playerListenerMutex);
@@ -13598,8 +14068,7 @@ inline void Player::manageCache() noexcept {
                     ps.currentEntryForPlayback(static_cast<uint32_t>(numberOfReturnedEnvelopesInTotal));
                     m_playerListener(ps);
                 }
-            }
-            catch (...) {} // LCOV_EXCL_LINE
+            } catch (...) {} // LCOV_EXCL_LINE
 
             statisticsCounter = 0;
         }
@@ -13608,19 +14077,18 @@ inline void Player::manageCache() noexcept {
 
 inline float Player::checkRefillingCache(const uint32_t &numberOfEntries, float refillMultiplicator) noexcept {
     // If filling level is around 35%, pour in more from the recording.
-    if (numberOfEntries < 0.35*m_desiredInitialLevel) {
+    if (numberOfEntries < 0.35 * m_desiredInitialLevel) {
         const uint32_t entriesReadFromFile = fillEnvelopeCache(static_cast<uint32_t>(refillMultiplicator * static_cast<float>(m_desiredInitialLevel)));
         if (entriesReadFromFile > 0) {
-            std::clog << "[cluon::Player]: Number of entries in cache: "  << numberOfEntries << ". " << entriesReadFromFile << " added to cache. " << m_envelopeCache.size() << " entries available." << std::endl;
+            std::clog << "[cluon::Player]: Number of entries in cache: " << numberOfEntries << ". " << entriesReadFromFile << " added to cache. "
+                      << m_envelopeCache.size() << " entries available." << std::endl;
             refillMultiplicator *= 1.25f;
         }
     }
     return refillMultiplicator;
 }
 
-}
-
-// clang-format on
+} // namespace cluon
 /*
  * Copyright (C) 2017-2018  Christian Berger
  *
@@ -15335,8 +15803,8 @@ class LIB_API {{%MESSAGE%}} {
         {{%MESSAGE%}}() = default;
         {{%MESSAGE%}}(const {{%MESSAGE%}}&) = default;
         {{%MESSAGE%}}& operator=(const {{%MESSAGE%}}&) = default;
-        {{%MESSAGE%}}({{%MESSAGE%}}&&) noexcept = default; // NOLINT
-        {{%MESSAGE%}}& operator=({{%MESSAGE%}}&&) noexcept = default; // NOLINT
+        {{%MESSAGE%}}({{%MESSAGE%}}&&) = default; // NOLINT
+        {{%MESSAGE%}}& operator=({{%MESSAGE%}}&&) = default; // NOLINT
         ~{{%MESSAGE%}}() = default;
 
     public:
@@ -15359,6 +15827,7 @@ class LIB_API {{%MESSAGE%}} {
 
         template<class PreVisitor, class Visitor, class PostVisitor>
         void accept(PreVisitor &&preVisit, Visitor &&visit, PostVisitor &&postVisit) {
+            (void)visit; // Prevent warnings from empty messages.
             std::forward<PreVisitor>(preVisit)(ID(), ShortName(), LongName());
             {{#%FIELDS%}}
             doTripletForwardVisit({{%FIELDIDENTIFIER%}}, std::move("{{%TYPE%}}"s), std::move("{{%NAME%}}"s), m_{{%NAME%}}, preVisit, visit, postVisit);
@@ -15869,26 +16338,41 @@ inline int32_t cluon_replay(int32_t argc, char **argv, bool monitorSTDIN) {
 
         std::fstream fin(recFile, std::ios::in|std::ios::binary);
         if (fin.good()) {
-            // Listen for data from stdin.
             std::atomic<bool> playCommandUpdate{false};
             std::mutex playerCommandMutex;
             cluon::data::PlayerCommand playerCommand;
+
+            auto playerCommandHandler = [&playCommandUpdate, &playerCommandMutex, &playerCommand](cluon::data::Envelope &&env){
+                cluon::data::PlayerCommand pc = cluon::extractMessage<cluon::data::PlayerCommand>(std::move(env));
+                {
+                    std::lock_guard<std::mutex> lck(playerCommandMutex);
+                    playerCommand = pc;
+                }
+                playCommandUpdate = true;
+            };
+
+            // OD4Session.
+            std::unique_ptr<cluon::OD4Session> od4;
+            if (0 != commandlineArguments.count("cid")) {
+                // Interface to a running OpenDaVINCI session (ignoring any incoming Envelopes).
+                od4 = std::make_unique<cluon::OD4Session>(static_cast<uint16_t>(std::stoi(commandlineArguments["cid"]))); // LCOV_EXCL_LINE
+                if (od4 && !monitorSTDIN) {
+                    od4->dataTrigger(cluon::data::PlayerCommand::ID(), playerCommandHandler);
+                }
+            }
+
+            // Listen for data from stdin.
+            std::unique_ptr<std::thread> stdinMonitoringThread;
             if (monitorSTDIN) {
-                std::thread t([&playCommandUpdate, &playerCommandMutex, &playerCommand](){
-                    while (std::cin.good()) {
-                        auto tmp{cluon::extractEnvelope(std::cin)};
-                        if (tmp.first) {
-                            if (tmp.second.dataType() == cluon::data::PlayerCommand::ID()) {
-                                cluon::data::PlayerCommand pc = cluon::extractMessage<cluon::data::PlayerCommand>(std::move(tmp.second));
-                                {
-                                    std::lock_guard<std::mutex> lck(playerCommandMutex);
-                                    playerCommand = pc;
-                                }
-                                playCommandUpdate = true;
-                            }
+                stdinMonitoringThread = std::make_unique<std::thread>([&playerCommandHandler](){ // LCOV_EXCL_LINE
+                    while (std::cin.good()) { // LCOV_EXCL_LINE
+                        auto tmp{cluon::extractEnvelope(std::cin)}; // LCOV_EXCL_LINE
+                        if (tmp.first && (tmp.second.dataType() == cluon::data::PlayerCommand::ID())) { // LCOV_EXCL_LINE
+                            cluon::data::Envelope env = tmp.second; // LCOV_EXCL_LINE
+                            playerCommandHandler(std::move(env)); // LCOV_EXCL_LINE
                         }
                     }
-                });
+                }); // LCOV_EXCL_LINE
             }
 
             // Listen for PlayerStatus updates.
@@ -15902,13 +16386,6 @@ inline int32_t cluon_replay(int32_t argc, char **argv, bool monitorSTDIN) {
                 }
                 playerStatusUpdate = true;
             };
-
-            // OD4Session.
-            std::unique_ptr<cluon::OD4Session> od4;
-            if (0 != commandlineArguments.count("cid")) {
-                // Interface to a running OpenDaVINCI session (ignoring any incoming Envelopes).
-                od4 = std::make_unique<cluon::OD4Session>(static_cast<uint16_t>(std::stoi(commandlineArguments["cid"])), [](auto){}); // LCOV_EXCL_LINE
-            }
 
             {
                 std::string s;
@@ -15983,10 +16460,12 @@ inline int32_t cluon_replay(int32_t argc, char **argv, bool monitorSTDIN) {
                        .serializedData(s);
 
                     if (od4 && od4->isRunning()) {
-                        od4->send(std::move(env));
+                        cluon::data::Envelope e = env;
+                        od4->send(std::move(e));
                     }
-                    else {
-                        std::cout << cluon::serializeEnvelope(std::move(env));
+                    if (playBackToStdout) {
+                        cluon::data::Envelope e = env;
+                        std::cout << cluon::serializeEnvelope(std::move(e));
                         std::cout.flush();
                     }
                     playerStatusUpdate = false;
@@ -15994,7 +16473,7 @@ inline int32_t cluon_replay(int32_t argc, char **argv, bool monitorSTDIN) {
                 if (playCommandUpdate) {
                     std::lock_guard<std::mutex> lck(playerCommandMutex);
                     if ( (playerCommand.command() == 1) || (playerCommand.command() == 2) ) {
-                        play = !(2 == playerCommand.command());
+                        play = !(2 == playerCommand.command()); // LCOV_EXCL_LINE
                     }
 
                     std::clog << PROGRAM << ": Change state: " << +playerCommand.command() << ", play = " << play << std::endl;
@@ -16009,18 +16488,20 @@ inline int32_t cluon_replay(int32_t argc, char **argv, bool monitorSTDIN) {
                     auto next = player.getNextEnvelopeToBeReplayed();
                     if (next.first) {
                         if (od4 && od4->isRunning()) {
-                            od4->send(std::move(next.second));
+                            cluon::data::Envelope e = next.second;
+                            od4->send(std::move(e));
                         }
                         if (playBackToStdout) {
-                            std::cout << cluon::serializeEnvelope(std::move(next.second));
+                            cluon::data::Envelope e = next.second;
+                            std::cout << cluon::serializeEnvelope(std::move(e));
                             std::cout.flush();
                         }
                         std::this_thread::sleep_for(std::chrono::duration<int32_t, std::micro>(player.delay()));
                     }
                 }
-                else { // LCOV_EXCL_LINE
+                else {
                     std::this_thread::sleep_for(std::chrono::duration<int32_t, std::milli>(100)); // LCOV_EXCL_LINE
-                }
+                } // LCOV_EXCL_LINE
             }
             retCode = 0;
         }

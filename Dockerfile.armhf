@@ -13,9 +13,8 @@
 # You should have received a copy of the GNU General Public License
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
-#FROM resin/raspberry-pi-debian:buster as builder
-#RUN [ "cross-build-start" ]
-FROM debian:buster-slim as builder
+FROM resin/raspberry-pi-debian:buster as builder
+RUN [ "cross-build-start" ]
 
 RUN apt-get -y update
 RUN apt-get -y install apt-utils 
